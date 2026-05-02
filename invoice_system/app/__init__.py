@@ -4,10 +4,8 @@ import time
 import os
 
 from flask import Flask, abort, redirect, request, session, url_for, render_template, flash
-from flask_mysqldb import MySQL
 from app.config import Config
-
-mysql = MySQL()
+from app.db import mysql_db as mysql
 
 def create_app():
     app = Flask(__name__)

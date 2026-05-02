@@ -1,68 +1,59 @@
 import subprocess
 import sys
-import os
+from pathlib import Path
 
-def run_crm():
-    """Run the CRM Flask application"""
-    print("Starting CRM...")
-    cmd = [sys.executable, "crm-flask/app.py"] # 
-    print("Running CRM command:", cmd)
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    print("CRM stdout:", result.stdout)
-    print("CRM stderr:", result.stderr)
-    print("CRM return code:", result.returncode)
 
-def run_ai_agent():
-    """Run the AI Agent"""
-    print("Starting AI Agent...")
-    # Use the current python executable
-    cmd = [sys.executable, "ai_agent/main.py"]
+BASE_DIR = Path(__file__).resolve().parent
+CRM_DIR = BASE_DIR / "crm"
+AI_DIR = BASE_DIR / "ai_agent"
+INVOICE_DIR = BASE_DIR / "invoice_system"
+
+
+def validate_paths() -> None:
+    missing = [str(folder) for folder in (CRM_DIR, AI_DIR, INVOICE_DIR) if not folder.exists()]
+    if missing:
+        raise FileNotFoundError(f"Missing required folders: {', '.join(missing)}")
+
+
+def stop_process(process: subprocess.Popen | None) -> None:
+    if not process or process.poll() is not None:
+        return
+    process.terminate()
     try:
-        subprocess.run(cmd)
-    except KeyboardInterrupt:
-        print("\nAI Agent interrupted.")
+        process.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        process.kill()
 
-def run_invoice_system():
-    """Run the Invoice System"""
-    print("Starting Invoice System...")
-    cmd = [sys.executable, "invoice_system/run.py"]
-    try:
-        subprocess.run(cmd)
-    except KeyboardInterrupt:
-        print("\nInvoice System interrupted.")
 
-def run_both():
-    """Run CRM, Invoice System, and AI Agent together"""
+def run_all() -> None:
     print("Starting CRM, Invoice System, and AI Agent...")
-    crm_process = subprocess.Popen([sys.executable, "crm-flask/app.py"])
-    print("CRM started in background on http://localhost:5000")
-    invoice_process = subprocess.Popen([sys.executable, "invoice_system/run.py"])
-    print("Invoice System started in background on http://localhost:5001")
-    # Now run AI agent
+    validate_paths()
+
+    crm_process = None
+    invoice_process = None
+
     try:
-        run_ai_agent()
+        crm_process = subprocess.Popen([sys.executable, "app.py"], cwd=str(CRM_DIR))
+        print("CRM started in background on http://localhost:5000")
+
+        invoice_process = subprocess.Popen([sys.executable, "run.py"], cwd=str(INVOICE_DIR))
+        print("Invoice System started in background on http://localhost:5001")
+
+        print("Starting AI Agent...")
+        subprocess.run([sys.executable, "-m", "ai_agent.main"], cwd=str(BASE_DIR))
+
     except KeyboardInterrupt:
         print("\nShutting down...")
     finally:
-        # After AI agent exits, terminate background services
-        if crm_process.poll() is None:  # Check if process is still running
-            crm_process.terminate()
-            try:
-                crm_process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                crm_process.kill()
-        if invoice_process.poll() is None:
-            invoice_process.terminate()
-            try:
-                invoice_process.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                invoice_process.kill()
+        stop_process(crm_process)
+        stop_process(invoice_process)
         print("CRM and Invoice System servers stopped.")
+
 
 if __name__ == "__main__":
     try:
-        run_both()
+        run_all()
     except KeyboardInterrupt:
         print("\nApplication terminated by user.")
-    except Exception as e:
-        print(f"\nAn error occurred: {e}")
+    except Exception as error:
+        print(f"\nAn error occurred: {error}")

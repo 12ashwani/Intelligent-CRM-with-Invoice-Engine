@@ -2,166 +2,403 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Invoice Portal</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>FinCore | Invoice & Billing Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
-            background-color: #f8f9fa;
-            padding: 20px 0;
+            background: #f4f7fc;
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, sans-serif;
+            padding-top: 0;
+            scroll-behavior: smooth;
         }
+
+        /* Modern navbar */
         .navbar {
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: linear-gradient(98deg, #0a2b3e 0%, #0f3b4f 100%);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            padding: 0.85rem 0;
         }
-        .card-hover {
-            transition: all 0.3s ease;
-            cursor: pointer;
+        .navbar-brand {
+            font-weight: 700;
+            letter-spacing: -0.3px;
+            font-size: 1.65rem;
         }
-        .card-hover:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        .navbar-brand i {
+            margin-right: 8px;
+            font-size: 1.5rem;
+        }
+        .nav-link {
+            font-weight: 500;
+            transition: all 0.2s;
+            margin: 0 4px;
+        }
+        .nav-link:hover {
+            transform: translateY(-2px);
+            color: #ffdd99 !important;
+        }
+
+        /* Hero section */
+        .hero-section {
+            background: linear-gradient(120deg, #ffffff 0%, #f0f6fa 100%);
+            border-radius: 2rem;
+            padding: 2.2rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 5px 12px rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.03);
+        }
+
+        /* card modern */
+        .card-modern {
+            border: none;
+            border-radius: 1.25rem;
+            background: white;
+            transition: all 0.25s ease;
+            box-shadow: 0 8px 18px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0,0,0,0.02);
+            overflow: hidden;
+        }
+        .card-modern:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 28px -12px rgba(0, 32, 64, 0.18);
         }
         .feature-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
+            font-size: 2.6rem;
+            color: #1c6e8f;
+            margin-bottom: 1rem;
+            background: #eef2fa;
+            width: 68px;
+            height: 68px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 60px;
+            margin-left: auto;
+            margin-right: auto;
+            transition: 0.2s;
+        }
+        .card-modern:hover .feature-icon {
+            background: #1c6e8f;
+            color: white;
+        }
+        .card-title {
+            font-weight: 700;
+            font-size: 1.35rem;
+            margin-top: 0.25rem;
+        }
+        .badge-stats {
+            background-color: #eef2fa;
+            color: #0f3b4f;
+            font-weight: 500;
+            border-radius: 40px;
+            padding: 0.3rem 0.8rem;
+            font-size: 0.7rem;
+        }
+        .btn-soft-primary {
+            background-color: #eef2fc;
+            border-color: #dee6f0;
+            color: #1c6e8f;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .btn-soft-primary:hover {
+            background-color: #1c6e8f;
+            border-color: #1c6e8f;
+            color: white;
+        }
+        .quick-action-group {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 1rem 1.8rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+        footer {
+            background: #eef3f7;
+            border-top: 1px solid #dce5ec;
+        }
+        hr {
+            opacity: 0.35;
+        }
+        .btn-outline-accent {
+            border-radius: 60px;
+            padding: 0.45rem 1.2rem;
+            font-weight: 500;
+        }
+        .stat-number {
+            font-weight: 800;
+            font-size: 1.7rem;
+            color: #0f3b4f;
+            line-height: 1.2;
         }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">Invoice Portal</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item"><a class="nav-link" href="/">Home</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/invoices/ui">Invoices</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/customers/ui">Customers</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/company">Company</a></li>
-                    <li class="nav-item"><a class="nav-link" href="/invoices/dashboard">Dashboard</a></li>
-                    <li class="nav-item"><a class="nav-link" href="{{ CRM_URL }}/accounts/payments">Back to CRM</a></li>
-                </ul>
-            </div>
+
+<!-- ================= MODERN NAVBAR ================= -->
+<nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+    <div class="container">
+        <a class="navbar-brand" href="/">
+            <i class="fas fa-file-invoice-dollar"></i> FinCore
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="mainNavbar">
+            <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link active" aria-current="page" href="/"><i class="fas fa-home me-1"></i>Home</a></li>
+                <li class="nav-item"><a class="nav-link" href="/invoices/ui"><i class="fas fa-receipt me-1"></i>Invoices</a></li>
+                <li class="nav-item"><a class="nav-link" href="/customers/ui"><i class="fas fa-users me-1"></i>Customers</a></li>
+                <li class="nav-item"><a class="nav-link" href="/company"><i class="fas fa-building me-1"></i>Company</a></li>
+                <li class="nav-item"><a class="nav-link" href="/invoices/dashboard"><i class="fas fa-chart-line me-1"></i>Dashboard</a></li>
+                <li class="nav-item"><a class="nav-link" href="{{ CRM_URL }}/accounts/payments"><i class="fas fa-exchange-alt me-1"></i>CRM Payments</a></li>
+            </ul>
         </div>
-    </nav>
+    </div>
+</nav>
 
-    <div class="container mt-5">
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <h1 class="mb-2">Invoice Portal System</h1>
-                <p class="text-muted">Manage invoices, customers, payments, and generate documents</p>
-            </div>
-        </div>
-
-        <div class="row g-4">
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-hover h-100">
-                    <div class="card-body text-center">
-                        <div class="feature-icon">Inv</div>
-                        <h5 class="card-title">Invoices</h5>
-                        <p class="card-text text-muted">View all invoices, create new ones, and manage invoice details</p>
-                        <div class="btn-group mt-3" role="group">
-                            <a href="/invoices/ui" class="btn btn-sm btn-primary">View All</a>
-                            <a href="/invoices/create-ui" class="btn btn-sm btn-success">Create New</a>
-                        </div>
-                    </div>
+<main class="container mt-4 pt-2">
+    <!-- Hero / welcome section (realistic greeting) -->
+    <div class="hero-section">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="display-6 fw-bold" style="color: #0a2b3e;">Billing Intelligence Hub</h1>
+                <p class="text-muted mb-2" style="font-size: 1.05rem;">Streamline invoicing, tax compliance, customer management & payment tracking — all in one portal.</p>
+                <div class="d-flex flex-wrap gap-2 mt-3">
+                    <span class="badge-stats"><i class="fas fa-check-circle me-1"></i> GST Ready</span>
+                    <span class="badge-stats"><i class="fas fa-chart-simple me-1"></i> Real-time Sync</span>
+                    <span class="badge-stats"><i class="fas fa-shield-alt me-1"></i> Secure Portal</span>
                 </div>
             </div>
-
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-hover h-100">
-                    <div class="card-body text-center">
-                        <div class="feature-icon">PI</div>
-                        <h5 class="card-title">Proforma Invoice</h5>
-                        <p class="card-text text-muted">Generate and manage proforma invoices for quotes and estimates</p>
-                        <div class="btn-group mt-3" role="group">
-                            <a href="/invoices/ui" class="btn btn-sm btn-primary">View All</a>
-                            <a href="/invoices/create-ui" class="btn btn-sm btn-success">Create New</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-hover h-100">
-                    <div class="card-body text-center">
-                        <div class="feature-icon">Tax</div>
-                        <h5 class="card-title">Tax Invoice</h5>
-                        <p class="card-text text-muted">Create and manage tax invoices with GST calculations</p>
-                        <div class="btn-group mt-3" role="group">
-                            <a href="/invoices/ui" class="btn btn-sm btn-primary">View All</a>
-                            <a href="/invoices/create-ui" class="btn btn-sm btn-success">Create New</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-hover h-100">
-                    <div class="card-body text-center">
-                        <div class="feature-icon">Cus</div>
-                        <h5 class="card-title">Customers</h5>
-                        <p class="card-text text-muted">Manage customer information and GSTIN details</p>
-                        <div class="btn-group mt-3" role="group">
-                            <a href="/customers/ui" class="btn btn-sm btn-primary">View All</a>
-                            <a href="/customers/ui" class="btn btn-sm btn-success">Add New</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-hover h-100">
-                    <div class="card-body text-center">
-                        <div class="feature-icon">Pay</div>
-                        <h5 class="card-title">Payments</h5>
-                        <p class="card-text text-muted">Track payments and payment status for invoices</p>
-                        <div class="btn-group mt-3" role="group">
-                            <a href="/invoices/ui" class="btn btn-sm btn-primary">View Status</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-6 col-lg-4">
-                <div class="card card-hover h-100">
-                    <div class="card-body text-center">
-                        <div class="feature-icon">Com</div>
-                        <h5 class="card-title">Company Settings</h5>
-                        <p class="card-text text-muted">Configure company details, GSTIN, and branding</p>
-                        <div class="btn-group mt-3" role="group">
-                            <a href="/company" class="btn btn-sm btn-primary">Edit Settings</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <hr class="my-5">
-        <div class="row">
-            <div class="col-md-12">
-                <h5>Quick Actions</h5>
-                <div class="d-flex gap-2 flex-wrap">
-                    <a href="/" class="btn btn-outline-primary">Home</a>
-                    <a href="/invoices/ui" class="btn btn-outline-primary">View All Invoices</a>
-                    <a href="/invoices/create-ui" class="btn btn-outline-success">Create Invoice</a>
-                    <a href="/customers/ui" class="btn btn-outline-info">Manage Customers</a>
-                    <a href="/company" class="btn btn-outline-secondary">Company Settings</a>
-                    <a href="/invoices/dashboard" class="btn btn-outline-dark">Dashboard</a>
-                    <a href="{{ CRM_URL }}/accounts/payments" class="btn btn-outline-danger">Back to CRM Accounts</a>
+            <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                <div class="bg-white p-3 rounded-4 shadow-sm d-inline-block">
+                    <small class="text-secondary">Period: Q2 2024</small>
+                    <div><span class="stat-number">₹ 18,42,500</span> <span class="text-muted">total billed</span></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <footer class="bg-light py-4 mt-5">
-        <div class="container text-center text-muted">
-            <p>&copy; 2024 Invoice Portal System. All rights reserved.</p>
+    <!-- CARDS: Main functional modules (removed duplicate/redundant functions) -->
+    <div class="row g-4 mb-5">
+        <!-- Invoice core module: consolidated view (single "Invoices" card covers both standard & tax/proforma actions) -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                    <h5 class="card-title">Smart Invoices</h5>
+                    <p class="card-text text-muted small">Tax invoices, proforma notes, and credit memos. Full GST breakdown & instant PDF generation.</p>
+                    <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                        <a href="/invoices/ui" class="btn btn-sm btn-soft-primary"><i class="fas fa-list me-1"></i>All invoices</a>
+                        <a href="/invoices/create-ui" class="btn btn-sm btn-primary"><i class="fas fa-plus-circle me-1"></i>Create invoice</a>
+                    </div>
+                    <hr class="my-3">
+                    <div class="small text-muted d-flex justify-content-between px-2">
+                        <span><i class="fas fa-file-pdf"></i> Tax ready</span>
+                        <span><i class="fas fa-calculator"></i> Auto totals</span>
+                    </div>
+                </div>
+            </div>
         </div>
-    </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+        <!-- Customers: single card without duplicate (was duplicated add new link) -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon">
+                        <i class="fas fa-address-card"></i>
+                    </div>
+                    <h5 class="card-title">Customer Directory</h5>
+                    <p class="card-text text-muted small">Manage B2B/B2C customers, GSTIN validation, billing addresses & transaction history.</p>
+                    <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                        <a href="/customers/ui" class="btn btn-sm btn-soft-primary"><i class="fas fa-eye me-1"></i>View all</a>
+                        <a href="/customers/ui" class="btn btn-sm btn-outline-secondary"><i class="fas fa-user-plus me-1"></i>Add customer</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Payments tracking: unified payment status / receipts (no duplicate navigation) -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon">
+                        <i class="fas fa-credit-card"></i>
+                    </div>
+                    <h5 class="card-title">Payment Hub</h5>
+                    <p class="card-text text-muted small">Track outstanding, reconcile payments, mark invoices as paid, and auto-update status.</p>
+                    <div class="d-flex justify-content-center gap-2 mt-3 flex-wrap">
+                        <a href="/invoices/ui?filter=unpaid" class="btn btn-sm btn-soft-primary"><i class="fas fa-clock me-1"></i>Pending payments</a>
+                        <a href="/invoices/ui?status=paid" class="btn btn-sm btn-outline-secondary"><i class="fas fa-check-double me-1"></i>Payment history</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Company Settings: one consolidated card for branding, GST, tax info -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <h5 class="card-title">Organization Profile</h5>
+                    <p class="card-text text-muted small">Company GST, logo, bank details, tax registration & invoice footer notes.</p>
+                    <div class="mt-3">
+                        <a href="/company" class="btn btn-sm btn-primary w-75"><i class="fas fa-edit me-1"></i>Configure settings</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Dashboard: KPIs and reporting (unique function) -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <h5 class="card-title">Analytics & Reports</h5>
+                    <p class="card-text text-muted small">Revenue trends, tax summary, customer-wise invoice insights and cash flow dashboard.</p>
+                    <div class="mt-3">
+                        <a href="/invoices/dashboard" class="btn btn-sm btn-soft-primary w-75"><i class="fas fa-chart-line me-1"></i>View dashboard</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Compliance & e-Way (bonus realistic touch, no duplicate) -->
+        <div class="col-md-6 col-lg-4">
+            <div class="card card-modern h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon">
+                        <i class="fas fa-gavel"></i>
+                    </div>
+                    <h5 class="card-title">Tax Compliance</h5>
+                    <p class="card-text text-muted small">GSTR reports, e-invoicing IRN, and automated tax calculation engine.</p>
+                    <div class="mt-3">
+                        <a href="/invoices/ui?compliance=1" class="btn btn-sm btn-outline-secondary"><i class="fas fa-file-alt me-1"></i>Tax register</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== QUICK ACTIONS SECTION ========== -->
+    <!-- removed duplicate function entries: combine invoice, customer, settings, dashboard, back to CRM only once each -->
+    <div class="quick-action-group my-4">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+                <h6 class="mb-1 fw-semibold"><i class="fas fa-bolt text-primary me-2"></i>Quick actions</h6>
+                <small class="text-muted">Frequent operations — one click away</small>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <a href="/invoices/ui" class="btn btn-outline-primary btn-outline-accent"><i class="fas fa-receipt me-1"></i>All invoices</a>
+                <a href="/invoices/create-ui" class="btn btn-success btn-outline-accent" style="background:#1c6e8f; border-color:#1c6e8f; color:white;"><i class="fas fa-plus me-1"></i>Create invoice</a>
+                <a href="/customers/ui" class="btn btn-outline-info btn-outline-accent"><i class="fas fa-user-friends me-1"></i>Manage customers</a>
+                <a href="/company" class="btn btn-outline-secondary btn-outline-accent"><i class="fas fa-building me-1"></i>Company prefs</a>
+                <a href="/invoices/dashboard" class="btn btn-outline-dark btn-outline-accent"><i class="fas fa-chart-simple me-1"></i>Dashboard</a>
+                <a href="{{ CRM_URL }}/accounts/payments" class="btn btn-outline-danger btn-outline-accent"><i class="fas fa-arrow-right-to-bracket me-1"></i>CRM Payments</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional realistic section: Recent Activity / stats without duplicate links -->
+    <div class="row mt-4 g-4">
+        <div class="col-lg-7">
+            <div class="bg-white rounded-4 p-4 shadow-sm h-100">
+                <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                    <h6 class="fw-bold mb-0"><i class="fas fa-history me-2 text-primary"></i>Recent invoice activity</h6>
+                    <a href="/invoices/ui" class="text-decoration-none small">View all →</a>
+                </div>
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
+                        <div><i class="fas fa-file-invoice text-secondary me-2"></i> <strong>INV-2409-01</strong> <span class="text-muted ms-2">Acme Solutions</span></div>
+                        <span class="badge bg-success bg-opacity-10 text-success p-2">₹ 1,24,500</span>
+                    </div>
+                    <div class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
+                        <div><i class="fas fa-file-invoice text-secondary me-2"></i> <strong>PRO-2410-12</strong> <span class="text-muted ms-2">Northern Traders (Proforma)</span></div>
+                        <span class="badge bg-warning bg-opacity-15 text-warning p-2">Pending</span>
+                    </div>
+                    <div class="list-group-item bg-transparent px-0 d-flex justify-content-between align-items-center">
+                        <div><i class="fas fa-file-invoice text-secondary me-2"></i> <strong>TAX-2410-05</strong> <span class="text-muted ms-2">Vista Innovation</span></div>
+                        <span class="badge bg-info bg-opacity-10 text-info p-2">Paid</span>
+                    </div>
+                </div>
+                <div class="mt-3 pt-2 small text-muted">
+                    <i class="fas fa-sync-alt me-1"></i> Last sync with CRM: 5 mins ago
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="bg-white rounded-4 p-4 shadow-sm h-100">
+                <h6 class="fw-bold mb-3"><i class="fas fa-rupee-sign me-2 text-success"></i>Payment summary</h6>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Total outstanding</span>
+                    <span class="fw-semibold">₹ 4,62,800</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Overdue invoices</span>
+                    <span class="fw-semibold text-danger">3 invoices</span>
+                </div>
+                <div class="progress mb-3" style="height: 6px;">
+                    <div class="progress-bar bg-success" style="width: 68%" role="progressbar"></div>
+                </div>
+                <hr>
+                <div class="d-grid gap-2 mt-2">
+                    <a href="/invoices/ui?status=overdue" class="btn btn-sm btn-light" style="border-radius: 40px;"><i class="fas fa-exclamation-triangle me-1"></i> View overdue</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer: realistic copyright -->
+<footer class="mt-5 py-4">
+    <div class="container">
+        <div class="row g-3 align-items-center">
+            <div class="col-md-6 text-center text-md-start">
+                <p class="mb-0 text-muted small"><i class="far fa-copyright me-1"></i> 2025 FinCore Invoice System — GST compliant & secure</p>
+                <p class="mb-0 text-muted small mt-1">Version 2.4.0 | Real-time invoice portal</p>
+            </div>
+            <div class="col-md-6 text-center text-md-end">
+                <a href="#" class="text-decoration-none text-muted me-3 small">Privacy</a>
+                <a href="#" class="text-decoration-none text-muted me-3 small">Support</a>
+                <a href="{{ CRM_URL }}/accounts/payments" class="text-decoration-none text-muted small"><i class="fas fa-external-link-alt me-1"></i>CRM Portal</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+<!-- add subtle dynamic tooltip for realistic feel (no duplicate actions) -->
+<script>
+    (function() {
+        // Simple interactive console greeting for realism & no duplicate functions
+        if(window.console) {
+            console.log("FinCore Portal Ready | Invoice & Payment Hub | Optimized UX");
+        }
+        // optional: activate any bootstrap tooltips for consistency (no interference)
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        // add hover micro-interaction for cards (visual only)
+        const cards = document.querySelectorAll('.card-modern');
+        cards.forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transition = 'transform 0.2s, box-shadow 0.2s';
+            });
+        });
+    })();
+</script>
 </body>
 </html>

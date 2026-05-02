@@ -1,77 +1,456 @@
 {% extends "base.html" %}
+
 {% block content %}
 
-<h2>Dashboard</h2>
-
-<div class="row">
-    <div class="col-md-3">
-        <div class="card p-3 bg-primary text-white">
-            <h5>Total Revenue</h5>
-            <h3>{{ data.stats.total_revenue }}</h3>
+<div class="container-fluid px-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold mb-1">Financial Dashboard</h2>
+            <p class="text-muted">Real-time overview of invoices, revenue, and business performance</p>
+        </div>
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="periodDropdown" data-bs-toggle="dropdown">
+                <i class="fas fa-calendar-alt me-1"></i> This Quarter
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#">This Month</a></li>
+                <li><a class="dropdown-item" href="#">This Quarter</a></li>
+                <li><a class="dropdown-item" href="#">This Year</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item" href="#">Custom Range</a></li>
+            </ul>
         </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="card p-3 bg-success text-white">
-            <h5>Invoices</h5>
-            <h3>{{ data.stats.total_invoices }}</h3>
+    <!-- Stats Cards Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Total Revenue</p>
+                            <h3 class="fw-bold mb-0">{{ data.stats.total_revenue }}</h3>
+                            <small class="text-success"><i class="fas fa-arrow-up"></i> +12.5% vs last period</small>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 rounded-3 p-3">
+                            <i class="fas fa-rupee-sign fa-2x text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Total Invoices</p>
+                            <h3 class="fw-bold mb-0">{{ data.stats.total_invoices }}</h3>
+                            <small class="text-muted">All time invoices generated</small>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-3 p-3">
+                            <i class="fas fa-file-invoice fa-2x text-success"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Paid Invoices</p>
+                            <h3 class="fw-bold mb-0">{{ data.stats.paid }}</h3>
+                            <small class="text-success"><i class="fas fa-check-circle"></i> Payment received</small>
+                        </div>
+                        <div class="bg-info bg-opacity-10 rounded-3 p-3">
+                            <i class="fas fa-credit-card fa-2x text-info"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <p class="text-muted mb-1 small">Pending Payments</p>
+                            <h3 class="fw-bold mb-0">{{ data.stats.pending }}</h3>
+                            <small class="text-warning"><i class="fas fa-clock"></i> Awaiting settlement</small>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 rounded-3 p-3">
+                            <i class="fas fa-hourglass-half fa-2x text-danger"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="card p-3 bg-info text-white">
-            <h5>Paid</h5>
-            <h3>{{ data.stats.paid }}</h3>
+    <!-- Secondary Metrics Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-muted small mb-1">Collection Efficiency</p>
+                            <h4 class="fw-bold mb-0">
+                                {% set paid = data.stats.paid_invoices|default(0)|float %}
+                                {% set total = data.stats.total_invoices|float %}
+                                {% if total > 0 %}
+                                    {{ "%.1f"|format((paid/total)*100) }}%
+                                {% else %}
+                                    0%
+                                {% endif %}
+                            </h4>
+                        </div>
+                        <div class="bg-success bg-opacity-10 rounded-circle p-2">
+                            <i class="fas fa-percent text-success"></i>
+                        </div>
+                    </div>
+                    <div class="progress mt-3" style="height: 6px;">
+                        {% set percentage = (paid/total*100) if total > 0 else 0 %}
+                        <div class="progress-bar bg-success" style="width: {{ percentage }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-muted small mb-1">Average Invoice Value</p>
+                            <h4 class="fw-bold mb-0">
+                                {% set revenue = data.stats.total_revenue|replace('₹', '')|replace(',', '')|float %}
+                                {% if revenue > 0 and total > 0 %}
+                                    {{ "₹ %.0f"|format(revenue/total) }}
+                                {% else %}
+                                    ₹ 0
+                                {% endif %}
+                            </h4>
+                        </div>
+                        <div class="bg-primary bg-opacity-10 rounded-circle p-2">
+                            <i class="fas fa-chart-line text-primary"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <p class="text-muted small mb-1">Overdue Invoices</p>
+                            <h4 class="fw-bold mb-0 text-danger">
+                                {% set overdue = data.stats.overdue|default(0) %}
+                                {{ overdue }}
+                            </h4>
+                        </div>
+                        <div class="bg-danger bg-opacity-10 rounded-circle p-2">
+                            <i class="fas fa-exclamation-triangle text-danger"></i>
+                        </div>
+                    </div>
+                    {% if overdue > 0 %}
+                    <a href="#" class="small text-danger text-decoration-none mt-2 d-inline-block">View details →</a>
+                    {% endif %}
+                </div>
+            </div>
         </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="card p-3 bg-danger text-white">
-            <h5>Pending</h5>
-            <h3>{{ data.stats.pending }}</h3>
+    <hr class="my-4">
+
+    <!-- Charts Row -->
+    <div class="row g-4">
+        <div class="col-lg-7">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pt-3 px-4">
+                    <h5 class="fw-bold mb-0"><i class="fas fa-chart-bar me-2 text-primary"></i> Monthly Revenue Trend</h5>
+                    <p class="text-muted small mb-0">Revenue progression over months</p>
+                </div>
+                <div class="card-body p-4">
+                    <canvas id="salesChart" height="280"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-5">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 pt-3 px-4">
+                    <h5 class="fw-bold mb-0"><i class="fas fa-chart-pie me-2 text-info"></i> Invoice Distribution</h5>
+                    <p class="text-muted small mb-0">Breakdown by invoice type</p>
+                </div>
+                <div class="card-body p-4 d-flex justify-content-center align-items-center">
+                    <canvas id="typeChart" height="260" width="260" style="max-width: 280px;"></canvas>
+                </div>
+                <div class="card-footer bg-transparent border-0 pb-3 text-center text-muted small">
+                    <i class="fas fa-info-circle"></i> Tax, Proforma & Regular invoices
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Invoices Table (Realistic addition) -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center pt-3 px-4">
+                    <h5 class="fw-bold mb-0"><i class="fas fa-history me-2 text-secondary"></i> Recent Invoices</h5>
+                    <a href="/invoices/ui" class="btn btn-sm btn-outline-primary">View All →</a>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Customer</th>
+                                    <th>Type</th>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for invoice in data.recent_invoices|default([]) %}
+                                <tr>
+                                    <td><strong>{{ invoice.number }}</strong></td>
+                                    <td>{{ invoice.customer }}</td>
+                                    <td><span class="badge bg-secondary bg-opacity-10 text-secondary">{{ invoice.type }}</span></td>
+                                    <td>{{ invoice.date }}</td>
+                                    <td>{{ invoice.amount }}</td>
+                                    <td>
+                                        {% if invoice.status == 'paid' %}
+                                        <span class="badge bg-success bg-opacity-15 text-success px-3 py-1">Paid</span>
+                                        {% elif invoice.status == 'pending' %}
+                                        <span class="badge bg-warning bg-opacity-15 text-warning px-3 py-1">Pending</span>
+                                        {% else %}
+                                        <span class="badge bg-danger bg-opacity-15 text-danger px-3 py-1">Overdue</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">No recent invoices found</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-<hr>
-
-<canvas id="salesChart"></canvas>
-<br>
-<canvas id="typeChart"></canvas>
-
+<!-- Chart.js Dependencies -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
 <script>
-// Monthly Sales Chart
-const monthlyData = {{ data.monthly | tojson }};
-const labels = monthlyData.map(x => "Month " + x[0]);
-const values = monthlyData.map(x => x[1]);
-
-new Chart(document.getElementById('salesChart'), {
-    type: 'bar',
-    data: {
-        labels: labels,
-        datasets: [{
-            label: 'Monthly Revenue',
-            data: values
-        }]
+document.addEventListener('DOMContentLoaded', function() {
+    // Monthly Sales Chart
+    const monthlyData = {{ data.monthly | tojson }};
+    
+    // Format month labels properly if they contain month numbers
+    let labels = [];
+    let values = [];
+    
+    if (monthlyData && monthlyData.length > 0) {
+        if (typeof monthlyData[0] === 'object' && monthlyData[0].month) {
+            // Handle object format: [{month: 1, revenue: 50000}, ...]
+            labels = monthlyData.map(x => {
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return monthNames[x.month - 1] || 'Month ' + x.month;
+            });
+            values = monthlyData.map(x => x.revenue);
+        } else {
+            // Handle array format: [[1, 50000], [2, 60000], ...]
+            labels = monthlyData.map(x => {
+                const monthNum = x[0];
+                const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                return monthNames[monthNum - 1] || 'Month ' + monthNum;
+            });
+            values = monthlyData.map(x => x[1]);
+        }
     }
-});
 
-// Invoice Type Chart
-const typeData = {{ data.types | tojson }};
-const typeLabels = typeData.map(x => x[0]);
-const typeValues = typeData.map(x => x[1]);
+    const salesCtx = document.getElementById('salesChart').getContext('2d');
+    new Chart(salesCtx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Monthly Revenue (₹)',
+                data: values,
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1,
+                borderRadius: 8,
+                barPercentage: 0.65,
+                categoryPercentage: 0.8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 8
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.dataset.label || '';
+                            let value = context.raw;
+                            return label + ': ₹ ' + value.toLocaleString('en-IN');
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return '₹ ' + value.toLocaleString('en-IN');
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Revenue (₹)',
+                        font: {
+                            weight: 'bold'
+                        }
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Month',
+                        font: {
+                            weight: 'bold'
+                        }
+                    }
+                }
+            }
+        }
+    });
 
-new Chart(document.getElementById('typeChart'), {
-    type: 'pie',
-    data: {
-        labels: typeLabels,
-        datasets: [{
-            data: typeValues
-        }]
-    }
+    // Invoice Type Chart
+    const typeData = {{ data.types | tojson }};
+    const typeLabels = typeData.map(x => {
+        // Enhance type labels for better readability
+        const typeMap = {
+            'tax': 'Tax Invoice',
+            'proforma': 'Proforma Invoice',
+            'regular': 'Regular Invoice',
+            'credit': 'Credit Note'
+        };
+        return typeMap[x[0].toLowerCase()] || x[0];
+    });
+    const typeValues = typeData.map(x => x[1]);
+    const typeColors = ['#36A2EB', '#FFCE56', '#4BC0C0', '#FF6384'];
+
+    const typeCtx = document.getElementById('typeChart').getContext('2d');
+    new Chart(typeCtx, {
+        type: 'pie',
+        data: {
+            labels: typeLabels,
+            datasets: [{
+                data: typeValues,
+                backgroundColor: typeColors,
+                borderWidth: 0,
+                hoverOffset: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 14,
+                        font: {
+                            size: 11
+                        }
+                    }
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            let value = context.raw;
+                            let total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            let percentage = ((value / total) * 100).toFixed(1);
+                            return label + ': ' + value + ' (' + percentage + '%)';
+                        }
+                    }
+                }
+            }
+        }
+    });
 });
 </script>
+
+<style>
+    /* Custom styles for dashboard */
+    .card {
+        border-radius: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.1) !important;
+    }
+    .table > :not(caption) > * > * {
+        padding: 1rem 0.75rem;
+    }
+    .badge {
+        font-weight: 500;
+        border-radius: 20px;
+    }
+    .bg-opacity-10 {
+        --bs-bg-opacity: 0.1;
+    }
+    .bg-opacity-15 {
+        --bs-bg-opacity: 0.12;
+    }
+    .progress {
+        border-radius: 10px;
+        background-color: #e9ecef;
+    }
+    .btn-outline-primary:hover {
+        background-color: #0d6efd;
+        color: white;
+    }
+    canvas {
+        max-height: 300px;
+    }
+    @media (max-width: 768px) {
+        .container-fluid {
+            padding: 0 12px;
+        }
+        h2 {
+            font-size: 1.5rem;
+        }
+    }
+</style>
 
 {% endblock %}

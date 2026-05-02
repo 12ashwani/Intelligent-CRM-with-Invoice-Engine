@@ -1,51 +1,60 @@
-from agent.agent import run_agent
+from ai_agent.agent.agent import run_agent
 
 
 def format_response(reply):
-    """Format the agent response for better readability"""
-    if isinstance(reply, list):
-        # CRM data - list of dictionaries
-        if not reply:
-            return "No data found."
+    """Format output nicely for terminal display."""
 
+    if not reply:
+        return "No data found."
+
+    # If list of records
+    if isinstance(reply, list):
         formatted = []
-        for item in reply:
+
+        for i, item in enumerate(reply, 1):
             if isinstance(item, dict):
-                # Format each dict as key: value pairs
-                formatted_item = ", ".join(f"{k}: {v}" for k, v in item.items())
-                formatted.append(formatted_item)
+                formatted.append(f"\nRecord {i}:")
+                for k, v in item.items():
+                    formatted.append(f"  {k}: {v}")
             else:
                 formatted.append(str(item))
 
         return "\n".join(formatted)
 
+    # If dictionary
     elif isinstance(reply, dict):
-        # Service documents - dictionary
         formatted = []
-        for service, docs in reply.items():
-            formatted.append(f"\n{service.upper()}:")
-            if isinstance(docs, list):
-                for i, doc in enumerate(docs, 1):
-                    formatted.append(f"  {i}. {doc}")
+
+        for key, value in reply.items():
+            formatted.append(f"\n{key.upper()}:")
+
+            if isinstance(value, list):
+                for i, v in enumerate(value, 1):
+                    formatted.append(f"  {i}. {v}")
             else:
-                formatted.append(f"  {docs}")
+                formatted.append(f"  {value}")
+
         return "\n".join(formatted)
 
-    else:
-        # LLM response or other string
-        return str(reply)
+    # If plain text
+    return str(reply)
 
 
 def main():
+    """CLI Chat Interface"""
+
+    print("=== AI CRM Assistant Started ===")
+
     while True:
-        user = input("You: ")
+        user = input("\nYou: ").strip()
 
         if user.lower() in ["quit", "exit", "q"]:
             print("Goodbye!")
             break
 
-        reply = run_agent(user)
-        print("AI:", format_response(reply))
+        result = run_agent(user)
+
+        print("\nAI:", format_response(result.get("response")))
 
 
 if __name__ == "__main__":

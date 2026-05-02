@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ document_title }} {{ invoice.invoice_number }}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* CRITICAL: Print-specific styles must be properly defined */
+    @page {
+      size: A4;
+      margin: 15mm 12mm;
+    }
+
+    /* Print Styles - These override screen styles when printing */
+    @media print {
+      body {
+        background: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      
+      .no-print {
+        display: none !important;
+      }
+      
+      .invoice-container {
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        border: none !important;
+        background: white !important;
+      }
+      
+      .invoice-inner {
+        padding: 0 !important;
+      }
+      
+      /* Force background colors to print */
+      .totals-box, .bank-details, .amount-words, .invoice-meta, .info-card {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        break-inside: avoid;
+      }
+      
+      /* Prevent page breaks inside important sections */
+      .info-grid, .items-section, .totals-wrapper, .bank-details, .signature-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      
+      /* Ensure tables don't break awkwardly */
+      .items-table tr, .items-table td, .items-table th {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      
+      /* Remove shadows and borders that cause issues */
+      .invoice-container, .info-card, .totals-box {
+        box-shadow: none !important;
+        border: 1px solid #ddd !important;
+      }
+    }
+
+    /* Screen Styles */
+    body {
+      font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      background: #eef2f5;
+      color: #1a2634;
+      font-size: 12px;
+      line-height: 1.45;
+      padding: 20px 0;
+    }
+
+    /* Action Buttons - Hidden in print */
+    .action-bar {
+      max-width: 1100px;
+      margin: 0 auto 16px auto;
+      text-align: right;
+      background: white;
+      padding: 12px 24px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .btn-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 18px;
+      margin-left: 12px;
+      background: white;
+      border: 1px solid #cbd5e1;
+      color: #1f2937;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 500;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    /* Main Invoice Container - Fixed for print */
+    .invoice-container {
+      max-width: 1100px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+
+    .invoice-inner {
+      padding: 32px 36px;
+    }
+
+    /* Header Section - Using table for better print compatibility */
+    .header-grid {
+      width: 100%;
+      border-bottom: 2px solid #0f3b5c;
+      padding-bottom: 20px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    
+    .company-details {
+      float: left;
+      width: 55%;
+    }
+    
+    .invoice-title-section {
+      float: right;
+      width: 40%;
+      text-align: right;
+    }
+    
+    /* Clearfix for float */
+    .header-grid:after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+
+    .company-logo {
+      max-width: 180px;
+      max-height: 70px;
+      margin-bottom: 12px;
+      object-fit: contain;
+    }
+
+    .company-name {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0a2e48;
+      margin-bottom: 8px;
+    }
+
+    .company-address {
+      color: #475569;
+      line-height: 1.5;
+      font-size: 11px;
+      margin-top: 6px;
+    }
+
+    .gst-detail {
+      font-size: 11px;
+      color: #334155;
+      margin-top: 4px;
+    }
+
+    .invoice-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: #0f3b5c;
+      margin-bottom: 12px;
+    }
+
+    .invoice-meta {
+      background: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      text-align: left;
+      display: inline-block;
+      text-align: left;
+    }
+
+    .invoice-meta p {
+      margin: 4px 0;
+      font-size: 11px;
+      text-align: left;
+    }
+
+    .meta-label {
+      font-weight: 600;
+      color: #1e293b;
+      display: inline-block;
+      min-width: 80px;
+    }
+
+    /* Customer Info Cards - Using tables for print */
+    .info-grid {
+      width: 100%;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    
+    .info-card {
+      float: left;
+      width: 48%;
+      background: #f9fafb;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 16px;
+    }
+    
+    .info-card:first-child {
+      margin-right: 4%;
+    }
+    
+    .info-card h4 {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0f3b5c;
+      margin-bottom: 10px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid #cbd5e1;
+    }
+
+    .info-row {
+      margin: 6px 0;
+      font-size: 11px;
+    }
+
+    .info-row strong {
+      display: inline-block;
+      min-width: 80px;
+      color: #334155;
+    }
+
+    /* Items Table - Critical for print */
+    .items-section {
+      margin: 20px 0;
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    .items-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    .items-table th {
+      background: #0f3b5c;
+      color: white;
+      padding: 10px 8px;
+      font-weight: 600;
+      text-align: center;
+      border: 1px solid #1e4a6e;
+    }
+    
+    /* Print background for table headers */
+    @media print {
+      .items-table th {
+        background: #0f3b5c !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+    }
+
+    .items-table td {
+      border: 1px solid #e2e8f0;
+      padding: 8px 6px;
+      vertical-align: top;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .text-left {
+      text-align: left;
+    }
+
+    /* Totals Section */
+    .totals-wrapper {
+      width: 100%;
+      margin: 20px 0;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .totals-box {
+      width: 320px;
+      background: #fefce8;
+      border: 1px solid #fde047;
+      border-radius: 8px;
+    }
+
+    .totals-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-bottom: 1px solid #fde047;
+      font-size: 11px;
+    }
+
+    .totals-row:last-child {
+      border-bottom: none;
+    }
+
+    .totals-row.grand-total {
+      background: #fef9c3;
+      font-weight: 700;
+      font-size: 13px;
+    }
+
+    /* Tax Breakup Table */
+    .tax-breakup {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 15px 0;
+    }
+
+    .tax-breakup th,
+    .tax-breakup td {
+      border: 1px solid #e2e8f0;
+      padding: 6px 8px;
+      font-size: 10px;
+    }
+
+    .tax-breakup th {
+      background: #f1f5f9;
+      text-align: center;
+    }
+
+    /* Amount in Words */
+    .amount-words {
+      background: #f8fafc;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 20px 0;
+      font-size: 11px;
+      border-left: 3px solid #0f3b5c;
+      border: 1px solid #e2e8f0;
+    }
+
+    /* Bank Details */
+    .bank-details {
+      background: #f1f5f9;
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 20px 0;
+      overflow: hidden;
+      border: 1px solid #e2e8f0;
+    }
+    
+    .bank-col {
+      float: left;
+      width: 48%;
+    }
+    
+    .bank-col:first-child {
+      margin-right: 4%;
+    }
+    
+    .bank-col p {
+      margin: 5px 0;
+      font-size: 10px;
+    }
+    
+    .bank-col strong {
+      display: inline-block;
+      min-width: 100px;
+    }
+
+    /* Signature Section */
+    .signature-section {
+      margin-top: 25px;
+      padding-top: 15px;
+      border-top: 1px solid #e2e8f0;
+      overflow: hidden;
+    }
+    
+    .declaration {
+      float: left;
+      width: 60%;
+      font-size: 10px;
+      color: #475569;
+    }
+    
+    .signature-box {
+      float: right;
+      width: 35%;
+      text-align: center;
+    }
+
+    .signature-line {
+      border-top: 1px solid #1e293b;
+      width: 180px;
+      margin: 8px auto 4px auto;
+    }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 9px;
+      color: #94a3b8;
+      border-top: 1px dashed #cbd5e1;
+      padding-top: 12px;
+      clear: both;
+    }
+
+    /* Clearfix utility */
+    .clearfix:after {
+      content: "";
+      display: table;
+      clear: both;
+    }
+
+    /* Responsive */
+    @media (max-width: 800px) {
+      .invoice-inner {
+        padding: 20px;
+      }
+      .company-details, .invoice-title-section {
+        float: none;
+        width: 100%;
+        text-align: left;
+      }
+      .invoice-title-section {
+        margin-top: 15px;
+        text-align: left;
+      }
+      .info-card, .bank-col {
+        float: none;
+        width: 100%;
+        margin-bottom: 15px;
+      }
+      .info-card:first-child {
+        margin-right: 0;
+      }
+      .bank-col:first-child {
+        margin-right: 0;
+      }
+      .declaration, .signature-box {
+        float: none;
+        width: 100%;
+        text-align: center;
+        margin-bottom: 15px;
+      }
+      .totals-wrapper {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Action Buttons (Hidden when printing) -->
+  {% if not pdf_mode %}
+  <div class="action-bar no-print">
+    <a href="/invoices/ui" class="btn-icon">
+      ← Back to Invoices
+    </a>
+    <a href="/invoices/{{ invoice.id }}/pdf" class="btn-icon" style="background:#0f3b5c; color:white; border-color:#0f3b5c;">
+      📄 Download PDF
+    </a>
+    <button class="btn-icon" onclick="window.print()">
+      🖨️ Print Invoice
+    </button>
+  </div>
+  {% endif %}
+
+  <div class="invoice-container">
+    <div class="invoice-inner">
+      <!-- HEADER SECTION -->
+      <div class="header-grid">
+        <div class="company-details">
+          {% if company.logo_src %}
+            <img class="company-logo" src="{{ company.logo_src }}" alt="Company Logo">
+          {% endif %}
+          <div class="company-name">{{ company.name }}</div>
+          <div class="company-address">{{ company.address }}</div>
+          <div class="gst-detail">
+            <strong>GSTIN:</strong> {{ company.gstin_display or company.gstin }} &nbsp;|&nbsp;
+            <strong>State:</strong> {{ company.state_display or company.state }}
+          </div>
+          <div class="gst-detail">
+            <strong>Email:</strong> {{ company.email }} &nbsp;|&nbsp;
+            <strong>Phone:</strong> {{ company.phone }}
+          </div>
+        </div>
+        <div class="invoice-title-section">
+          <div class="invoice-title">{{ document_title or "TAX INVOICE" }}</div>
+          <div class="invoice-meta">
+            <p><span class="meta-label">Invoice No:</span> <strong>{{ invoice.invoice_number }}</strong></p>
+            <p><span class="meta-label">Date:</span> {{ invoice.created_at_display or invoice.date }}</p>
+            <p><span class="meta-label">Due Date:</span> {{ invoice.due_date_display or invoice.due_date }}</p>
+            <p><span class="meta-label">PO/Ref:</span> {{ invoice.po_number or '-' }}</p>
+            <p><span class="meta-label">Order No:</span> {{ invoice.order_number or '-' }}</p>
+          </div>
+        </div>
+      </div>
+      <div class="clearfix"></div>
+
+      <!-- CUSTOMER DETAILS -->
+      <div class="info-grid">
+        <div class="info-card">
+          <h4>📦 Bill To</h4>
+          <div class="info-row"><strong>Name:</strong> {{ customer.name }}</div>
+          <div class="info-row"><strong>Address:</strong> {{ customer.address }}</div>
+          <div class="info-row"><strong>GSTIN:</strong> {{ customer.gstin_display or customer.gstin or 'Not Applicable' }}</div>
+          <div class="info-row"><strong>State:</strong> {{ customer.state_display or customer.state }}</div>
+          <div class="info-row"><strong>Email:</strong> {{ customer.email }}</div>
+        </div>
+        <div class="info-card">
+          <h4>🚚 Ship To</h4>
+          <div class="info-row"><strong>Name:</strong> {{ customer.shipping_name or customer.name }}</div>
+          <div class="info-row"><strong>Address:</strong> {{ customer.shipping_address or customer.address }}</div>
+          <div class="info-row"><strong>Place of Supply:</strong> {{ invoice.place_of_supply_display or customer.state }}</div>
+          <div class="info-row"><strong>Payment Terms:</strong> {{ invoice.payment_terms or 'Credit (30 days)' }}</div>
+          <div class="info-row"><strong>Transport:</strong> {{ invoice.transport_details or '-' }}</div>
+        </div>
+      </div>
+      <div class="clearfix"></div>
+
+      <!-- ITEMS TABLE -->
+      <div class="items-section">
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th class="text-center" style="width: 5%;">#</th>
+              <th class="text-left" style="width: 40%;">Description of Goods / Services</th>
+              <th class="text-center" style="width: 10%;">HSN/SAC</th>
+              <th class="text-center" style="width: 8%;">Qty</th>
+              <th class="text-right" style="width: 12%;">Rate (₹)</th>
+              <th class="text-center" style="width: 8%;">Unit</th>
+              <th class="text-right" style="width: 17%;">Amount (₹)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td class="text-center">{{ loop.index }}</td>
+              <td>
+                <strong>{{ item.name }}</strong>
+                {% if item.description %}
+                  <br><small class="text-muted">{{ item.description }}</small>
+                {% endif %}
+              </td>
+              <td class="text-center">{{ item.hsn or '-' }}</td>
+              <td class="text-center">{{ item.qty_display or item.qty }}</td>
+              <td class="text-right">{{ "{:,.2f}".format(item.price) }}</td>
+              <td class="text-center">{{ item.unit_label or item.per or 'Nos' }}</td>
+              <td class="text-right"><strong>{{ "{:,.2f}".format(item.line_total) }}</strong></td>
+            </tr>
+            {% endfor %}
+            {% if not items %}
+            <tr>
+              <td colspan="7" class="text-center" style="padding: 40px;">No items found</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- TAX SUMMARY & TOTALS -->
+      <div class="totals-wrapper">
+        <div class="totals-box">
+          <div class="totals-row">
+            <span>Subtotal</span>
+            <span>₹ {{ "{:,.2f}".format(invoice.subtotal) }}</span>
+          </div>
+          {% for tax in tax_rows %}
+          <div class="totals-row">
+            <span>CGST @ {{ tax.cgst_rate or tax.rate }}%</span>
+            <span>₹ {{ "{:,.2f}".format(tax.cgst_amount or (tax.amount/2 if tax.amount else 0)) }}</span>
+          </div>
+          <div class="totals-row">
+            <span>SGST @ {{ tax.sgst_rate or tax.rate }}%</span>
+            <span>₹ {{ "{:,.2f}".format(tax.sgst_amount or (tax.amount/2 if tax.amount else 0)) }}</span>
+          </div>
+          {% endfor %}
+          {% if not tax_rows and invoice.tax_total and invoice.tax_total > 0 %}
+          <div class="totals-row">
+            <span>GST Total</span>
+            <span>₹ {{ "{:,.2f}".format(invoice.tax_total) }}</span>
+          </div>
+          {% endif %}
+          <div class="totals-row grand-total">
+            <span>Grand Total</span>
+            <span>₹ {{ "{:,.2f}".format(invoice.total) }}</span>
+          </div>
+          {% if invoice.round_off and invoice.round_off != 0 %}
+          <div class="totals-row">
+            <span>Round Off</span>
+            <span>{{ "{:,.2f}".format(invoice.round_off) }}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- TAX BREAKUP TABLE (HSN-Wise) -->
+      {% if tax_rows and tax_rows|length > 1 %}
+      <table class="tax-breakup">
+        <thead>
+          <tr>
+            <th>HSN/SAC</th>
+            <th>Taxable Value (₹)</th>
+            <th>CGST (%)</th>
+            <th>CGST Amt (₹)</th>
+            <th>SGST (%)</th>
+            <th>SGST Amt (₹)</th>
+            <th>Total Tax (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for tax in tax_rows %}
+          <tr>
+            <td class="text-center">{{ tax.hsn or '-' }}</td>
+            <td class="text-right">{{ "{:,.2f}".format(tax.taxable_value) }}</td>
+            <td class="text-center">{{ tax.cgst_rate or (tax.rate|float/2) }}</td>
+            <td class="text-right">{{ "{:,.2f}".format(tax.cgst_amount or (tax.amount|float/2)) }}</td>
+            <td class="text-center">{{ tax.sgst_rate or (tax.rate|float/2) }}</td>
+            <td class="text-right">{{ "{:,.2f}".format(tax.sgst_amount or (tax.amount|float/2)) }}</td>
+            <td class="text-right"><strong>{{ "{:,.2f}".format(tax.amount) }}</strong></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+
+      <!-- AMOUNT IN WORDS -->
+      <div class="amount-words">
+        <strong>Amount in Words:</strong> {{ invoice.total_in_words or invoice.total_in_words_rupee }}<br>
+        {% if invoice.tax_in_words %}
+        <strong>Tax Amount in Words:</strong> {{ invoice.tax_in_words }}
+        {% endif %}
+      </div>
+
+      <!-- BANK DETAILS -->
+      <div class="bank-details">
+        <div class="bank-col">
+          <strong>🏦 Bank Account Details</strong>
+          <p><strong>Account Name:</strong> {{ company.bank_account_name or company.name }}</p>
+          <p><strong>Bank Name:</strong> {{ company.bank_name }}</p>
+          <p><strong>Account No:</strong> {{ company.account_number or company.bank_account }}</p>
+        </div>
+        <div class="bank-col">
+          <strong>💳 Other Details</strong>
+          <p><strong>IFSC Code:</strong> {{ company.ifsc or company.ifsc_code }}</p>
+          <p><strong>UPI ID:</strong> {{ company.upi_id or 'Not Available' }}</p>
+          <p><strong>GST No:</strong> {{ company.gstin }}</p>
+        </div>
+      </div>
+      <div class="clearfix"></div>
+
+      <!-- SIGNATURE & DECLARATION -->
+      <div class="signature-section">
+        <div class="declaration">
+          <strong>Declaration:</strong> We declare that this invoice shows the actual price of the goods/services described and that all particulars are true and correct. E. &amp; O.E.
+        </div>
+        <div class="signature-box">
+          <div>for <strong>{{ company.name }}</strong></div>
+          <div class="signature-line"></div>
+          <div>Authorised Signatory</div>
+        </div>
+      </div>
+      <div class="clearfix"></div>
+
+      <div class="footer-note">
+        This is a computer-generated invoice | Thank you for your business!
+      </div>
+    </div>
+  </div>
+
+  {% if not pdf_mode %}
+  <script>
+    // Ensure proper print behavior
+    window.onbeforeprint = function() {
+      document.body.style.background = 'white';
+      // Force all background colors to print
+      const elements = document.querySelectorAll('.totals-box, .bank-details, .amount-words, .invoice-meta, .info-card, .items-table th');
+      elements.forEach(el => {
+        el.style.setProperty('-webkit-print-color-adjust', 'exact', 'important');
+        el.style.setProperty('print-color-adjust', 'exact', 'important');
+      });
+    };
+    
+    window.onafterprint = function() {
+      document.body.style.background = '#eef2f5';
+    };
+    
+    // For PDF generation - ensure proper rendering
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('Invoice ready for print/PDF');
+    });
+  </script>
+  {% endif %}
+</body>
+</html>

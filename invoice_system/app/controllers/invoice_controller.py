@@ -1,10 +1,12 @@
 from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
 from MySQLdb.cursors import DictCursor
-
+from datetime import date
+from flask import jsonify
 from app import mysql
-from app.services.invoice_service import InvoiceService
 from app.repositories.customer_repo import CustomerRepo
-from app.utils.pdf_generator import generate_invoice_pdf
+from app.services.invoice_service import InvoiceService
+from app.utils.gst import resolve_state_and_code, validate_address_pincode, validate_place_of_supply_format, extract_gstin_details
+from app.utils.pdf_generator import build_invoice_context, generate_invoice_pdf, select_invoice_template
 
 invoice_bp = Blueprint("invoice", __name__)
 service = InvoiceService()
@@ -52,15 +54,100 @@ def get_company_settings():
 # ================================
 @invoice_bp.route("/ui")
 def invoice_ui():
-    """ Main invoice listing page. Fetches all invoices and company details for display."""
     cur = mysql.connection.cursor(DictCursor)
-    cur.execute("SELECT * FROM invoices ORDER BY id DESC")
+    cur.execute(
+        """
+        SELECT
+            i.*,
+            DATE_FORMAT(i.date, '%%Y-%%m-%%d') AS invoice_date_iso,
+            DATE_FORMAT(i.due_date, '%%Y-%%m-%%d') AS due_date_iso,
+            c.name AS customer_name,
+            c.gstin AS customer_gstin,
+            COALESCE(SUM(CASE WHEN ip.status = 'paid' THEN ip.amount ELSE 0 END), 0) AS amount_paid
+        FROM invoices i
+        LEFT JOIN customers c ON c.id = i.customer_id
+        LEFT JOIN invoice_payments ip ON ip.invoice_id = i.id
+        GROUP BY i.id
+        ORDER BY i.id DESC
+        """
+    )
     invoices = cur.fetchall()
 
     company = get_company_settings()
-    
-    return render_template("invoices/list.html", invoices=invoices, company=company)
 
+    return render_template(
+        "invoices/list.html",
+        invoices=invoices,
+        company=company,
+        now_date=date.today().isoformat()
+
+    )
+# ================================
+# API route to fetch customer details by ID (used for dynamic form population in invoice creation)
+# ================================
+
+@invoice_bp.route("/api/customer/<int:customer_id>")
+def get_customer_api(customer_id):
+    cur = mysql.connection.cursor(DictCursor)
+    cur.execute("SELECT * FROM customers WHERE id = %s", (customer_id,))
+    customer = cur.fetchone()
+    if not customer:
+        return jsonify({})
+    payload = dict(customer)
+    payload["contact"] = payload.get("contact") or payload.get("phone") or ""
+    payload["state_code"] = payload.get("state_code") or ""
+    return jsonify(payload)
+
+
+@invoice_bp.route("/api/lead/<int:lead_id>")
+def get_lead_api(lead_id):
+    cur = mysql.connection.cursor(DictCursor)
+    cur.execute(
+        """
+        SELECT
+            l.id,
+            l.company_name,
+            l.email,
+            l.auth_person_name,
+            l.auth_person_number,
+            l.auth_person_email,
+            l.service,
+            l.status,
+            c.id AS customer_id,
+            c.gstin,
+            c.address,
+            c.state,
+            c.state_code,
+            COALESCE(c.contact, c.phone, '') AS customer_contact
+        FROM leads l
+        LEFT JOIN customers c
+            ON c.name = l.company_name
+            OR (c.email IS NOT NULL AND c.email <> '' AND (c.email = l.auth_person_email OR c.email = l.email))
+        WHERE l.id = %s
+        ORDER BY c.id DESC
+        LIMIT 1
+        """,
+        (lead_id,),
+    )
+    lead = cur.fetchone()
+    if not lead:
+        return jsonify({})
+    return jsonify(
+        {
+            "id": lead.get("id"),
+            "company_name": lead.get("company_name") or "",
+            "email": lead.get("auth_person_email") or lead.get("email") or "",
+            "contact_person": lead.get("auth_person_name") or "",
+            "contact": lead.get("auth_person_number") or lead.get("customer_contact") or "",
+            "service": lead.get("service") or "",
+            "status": lead.get("status") or "",
+            "gstin": lead.get("gstin") or "",
+            "address": lead.get("address") or "",
+            "state": lead.get("state") or "",
+            "state_code": lead.get("state_code") or "",
+            "customer_id": lead.get("customer_id"),
+        }
+    )
 # ================================
 # Invoice creation UI
 # ================================
@@ -68,9 +155,15 @@ def invoice_ui():
 def create_invoice_ui():
     """ UI for creating a new invoice. On GET, shows form with customers and CRM leads. On POST, validates input and creates invoice."""
     company = get_company_settings()
+    company_state_name = ""
     if not company:
-        flash("Please complete company setup before creating invoices.", "warning")
-        return redirect(url_for("company.company_settings"))
+        flash("Company settings are missing. You can fill form, but invoice creation needs company setup.", "warning")
+    else:
+        company_state_name, _ = resolve_state_and_code(
+            company.get("state"),
+            company.get("state_code"),
+            company.get("gstin"),
+        )
 
     cur, use_dict = get_cursor(DictCursor)
     cur.execute("SELECT * FROM customers")
@@ -98,24 +191,26 @@ def create_invoice_ui():
         names = request.form.getlist("name[]")
         qtys = request.form.getlist("qty[]")
         prices = request.form.getlist("price[]")
+        sacs = request.form.getlist("sac[]")
 
         items = []
         for i in range(len(names)):
             item_name = (names[i] or "").strip()
             qty_raw = (qtys[i] or "").strip()
             price_raw = (prices[i] or "").strip()
+            sac_raw = (sacs[i] or "").strip() if i < len(sacs) else ""
 
-            if not item_name and not qty_raw and not price_raw:
+            if not item_name and not qty_raw and not price_raw and not sac_raw:
                 continue
 
-            if not item_name or not qty_raw or not price_raw:
-                flash("Each invoice item must include a name, quantity, and price.", "warning")
+            if not item_name or not qty_raw or not price_raw or not sac_raw:
+                flash("Each invoice item must include a description, SAC, quantity, and rate.", "warning")
                 return render_template(
                     "invoices/create.html",
                     customers=customers,
                     crm_leads=crm_leads,
                     selected_lead=selected_lead,
-                    company_state=company.get("state", ""),
+                    company_state=company_state_name,
                 )
 
             try:
@@ -128,13 +223,14 @@ def create_invoice_ui():
                     customers=customers,
                     crm_leads=crm_leads,
                     selected_lead=selected_lead,
-                    company_state=company.get("state", ""),
+                    company_state=company_state_name,
                 )
 
             items.append({
                 "name": item_name,
                 "qty": qty,
                 "price": price,
+                "hsn": sac_raw,
             })
 
         if not items:
@@ -144,7 +240,7 @@ def create_invoice_ui():
                 customers=customers,
                 crm_leads=crm_leads,
                 selected_lead=selected_lead,
-                company_state=company.get("state", ""),
+                company_state=company_state_name,
             )
 
         customer_id = request.form.get("customer_id", type=int)
@@ -156,6 +252,22 @@ def create_invoice_ui():
             customer_gstin = (request.form.get("customer_gstin") or "").strip()
             customer_address = (request.form.get("customer_address") or "").strip()
             customer_state = (request.form.get("customer_state") or "").strip()
+            customer_state_name, customer_state_code = resolve_state_and_code(
+                customer_state,
+                request.form.get("customer_state_code"),
+                customer_gstin,
+            )
+
+            # Validate customer address contains PIN code
+            if not validate_address_pincode(customer_address):
+                flash("Customer address must include a valid 6-digit PIN code.", "warning")
+                return render_template(
+                    "invoices/create.html",
+                    customers=customers,
+                    crm_leads=crm_leads,
+                    selected_lead=selected_lead,
+                    company_state=company_state_name,
+                )
 
             if not customer_name:
                 flash("Customer name is required.", "warning")
@@ -164,7 +276,7 @@ def create_invoice_ui():
                     customers=customers,
                     crm_leads=crm_leads,
                     selected_lead=selected_lead,
-                    company_state=company.get("state", ""),
+                    company_state=company_state_name,
                 )
 
             if not customer_state:
@@ -174,7 +286,7 @@ def create_invoice_ui():
                     customers=customers,
                     crm_leads=crm_leads,
                     selected_lead=selected_lead,
-                    company_state=company.get("state", ""),
+                    company_state=company_state_name,
                 )
 
             existing_customer = customer_repo.find_by_name_email(customer_name, customer_email or None)
@@ -188,7 +300,8 @@ def create_invoice_ui():
                         "gstin": customer_gstin,
                         "address": customer_address,
                         "contact": customer_contact,
-                        "state": customer_state,
+                        "state": customer_state_name,
+                        "state_code": customer_state_code,
                     }
                 )
 
@@ -200,19 +313,32 @@ def create_invoice_ui():
                 customers=customers,
                 crm_leads=crm_leads,
                 selected_lead=selected_lead,
-                company_state=company.get("state", ""),
+                company_state=company_state_name,
             )
 
         data = {
             "customer_id": customer_id,
+            "lead_id": request.form.get("crm_lead_id", type=int),
             "invoice_type": invoice_type,
             "items": items,
             "po_number": request.form.get("po_number", "").strip(),
             "place_of_supply": request.form.get("place_of_supply", "").strip(),
             "payment_terms": request.form.get("payment_terms", "").strip(),
             "due_date": request.form.get("due_date", "").strip(),
+            "invoice_date": request.form.get("invoice_date", "").strip(),
             "hsn_code": request.form.get("hsn_code", "").strip(),
         }
+
+        # Validate place of supply format
+        if not validate_place_of_supply_format(data["place_of_supply"]):
+            flash("Place of supply must be in format 'State Name (Code)', e.g., 'Maharashtra (27)'.", "warning")
+            return render_template(
+                "invoices/create.html",
+                customers=customers,
+                crm_leads=crm_leads,
+                selected_lead=selected_lead,
+                company_state=company_state_name,
+            )
 
         try:
             service.create_invoice(data)
@@ -223,7 +349,7 @@ def create_invoice_ui():
                 customers=customers,
                 crm_leads=crm_leads,
                 selected_lead=selected_lead,
-                company_state=company.get("state", ""),
+                company_state=company_state_name,
             )
         except Exception as ex:
             flash("Unable to create invoice. " + str(ex), "danger")
@@ -232,7 +358,7 @@ def create_invoice_ui():
                 customers=customers,
                 crm_leads=crm_leads,
                 selected_lead=selected_lead,
-                company_state=company.get("state", ""),
+                company_state=company_state_name,
             )
 
         return redirect(url_for("invoice.invoice_ui"))
@@ -242,7 +368,7 @@ def create_invoice_ui():
         customers=customers,
         crm_leads=crm_leads,
         selected_lead=selected_lead,
-        company_state=company.get("state", ""),
+        company_state=company_state_name,
     )
 
 # ================================
@@ -276,18 +402,9 @@ def view_invoice(invoice_id):
         flash("Please complete company setup before viewing invoices.", "warning")
         return redirect(url_for("company.company_settings"))
 
-    # Normalize data for template
-    from app.utils.pdf_generator import _normalize_invoice, _normalize_customer, _normalize_items, _normalize_company
-    invoice_data = _normalize_invoice(invoice)
-    customer_data = _normalize_customer(customer)
-    items_data = _normalize_items(items)
-    company_data = _normalize_company(company)
-
-    return render_template("invoices/tax.html", 
-                         invoice=invoice_data, 
-                         customer=customer_data, 
-                         items=items_data, 
-                         company=company_data)
+    context = build_invoice_context(invoice, customer, items, company, pdf_mode=False)
+    template_name = select_invoice_template(context["invoice"]["invoice_type"])
+    return render_template(template_name, **context)
 
 @invoice_bp.route("/<int:invoice_id>/pdf")
 def download_invoice(invoice_id):
@@ -315,7 +432,8 @@ def download_invoice(invoice_id):
         flash(f"Unable to generate invoice PDF: {ex}", "danger")
         return redirect(url_for("invoice.invoice_ui"))
 
-    return send_file(file_path, as_attachment=True, download_name=f"{invoice[1]}.pdf")
+    invoice_number = invoice["invoice_number"] if isinstance(invoice, dict) else invoice[1]
+    return send_file(file_path, as_attachment=True, download_name=f"{invoice_number}.pdf")
 
 @invoice_bp.route("/<int:invoice_id>/delete", methods=["POST"])
 def delete_invoice(invoice_id):

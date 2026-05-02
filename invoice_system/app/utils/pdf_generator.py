@@ -1,14 +1,10 @@
 import os
 import tempfile
 from decimal import Decimal
-from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, unquote
 
-try:
-    from weasyprint import HTML
-    WEASYPRINT_AVAILABLE = True
-except (ImportError, OSError):
-    WEASYPRINT_AVAILABLE = False
+HTML = None
+WEASYPRINT_AVAILABLE = False
 
 try:
     import pdfkit
@@ -17,83 +13,51 @@ except ImportError:
     PDFKIT_AVAILABLE = False
 
 try:
-    from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import mm
-    from reportlab.pdfgen import canvas
-    from reportlab.lib.utils import ImageReader
-    REPORTLAB_AVAILABLE = True
-except ImportError:
-    REPORTLAB_AVAILABLE = False
+    from xhtml2pdf import pisa
+    XHTML2PDF_AVAILABLE = True
+except (ImportError, OSError):
+    XHTML2PDF_AVAILABLE = False
 
-from flask import render_template, current_app
+from flask import current_app, render_template, url_for
+
+from app.utils.gst import format_invoice_date, format_state_with_code, resolve_state_and_code, split_place_of_supply
+from app.utils.number_to_words import number_to_words_indian
+
+
+def _load_weasyprint():
+    """Lazy import WeasyPrint to avoid startup warnings when native libs are missing."""
+    global HTML, WEASYPRINT_AVAILABLE
+
+    if HTML is not None:
+        return True
+
+    try:
+        from weasyprint import HTML as weasyprint_html
+
+        HTML = weasyprint_html
+        WEASYPRINT_AVAILABLE = True
+    except (ImportError, OSError):
+        WEASYPRINT_AVAILABLE = False
+
+    return WEASYPRINT_AVAILABLE
 
 
 def _pdfkit_configuration():
     if not PDFKIT_AVAILABLE:
         return None
-
     try:
         return pdfkit.configuration()
     except OSError:
         return None
 
 
-def _resolve_image_path(image_path):
-    """
-    Convert relative image path to absolute file path for PDF processing.
-    Handles URLs, relative paths, and direct file paths.
-    Returns the path if it exists, otherwise returns the original path.
-    """
-    if not image_path:
-        return None
-    
-    # If it's a URL (starts with http/https), return as-is for weasyprint/pdfkit
-    if image_path.startswith(('http://', 'https://')):
-        return image_path
-    
-    # Try to get the Flask app instance
-    try:
-        app_root = current_app.root_path if current_app else None
-    except (RuntimeError, AttributeError):
-        app_root = None
-    
-    # If it's a relative path like /static/..., convert to absolute file path
-    if image_path.startswith('/'):
-        if app_root:
-            abs_path = os.path.join(app_root, image_path.lstrip('/'))
-            if os.path.exists(abs_path):
-                return f"file://{os.path.abspath(abs_path)}"
-        return image_path
-    
-    # If it's already an absolute path, check if it exists
-    if os.path.isabs(image_path):
-        if os.path.exists(image_path):
-            return f"file://{image_path}"
-        return image_path
-    
-    # For relative paths without leading /, try from app root
-    if app_root:
-        abs_path = os.path.join(app_root, image_path)
-        if os.path.exists(abs_path):
-            return f"file://{os.path.abspath(abs_path)}"
-    
-    # Try to find the image in the static/uploads directory (for logo filenames)
-    if app_root:
-        uploads_path = os.path.join(app_root, "static", "uploads", image_path)
-        if os.path.exists(uploads_path):
-            return f"file://{os.path.abspath(uploads_path)}"
-    
-    return image_path
-
-
-def _row_get(row, index, default=None):
+def _row_get(row, key, default=None):
     if row is None:
         return default
     if isinstance(row, dict):
-        return row.get(index, default)
+        return row.get(key, default)
     try:
-        return row[index]
+        return row[key]
     except (IndexError, KeyError, TypeError):
         return default
 
@@ -104,418 +68,314 @@ def _to_decimal(value):
     return Decimal(str(value))
 
 
+def _display_value(value, default="-"):
+    if value is None:
+        return default
+    text = str(value).strip()
+    return text if text else default
+
+
 def _format_money(value):
     return f"{_to_decimal(value):.2f}"
 
 
+def _format_quantity(value):
+    quantity = _to_decimal(value)
+    if quantity == quantity.to_integral():
+        return str(int(quantity))
+    return format(quantity.normalize(), "f")
+
+
+def _resolve_image_path(image_path):
+    if not image_path:
+        return ""
+    if image_path.startswith(("http://", "https://", "file://")):
+        return image_path
+
+    app_root = current_app.root_path
+    candidates = []
+
+    if os.path.isabs(image_path):
+        candidates.append(image_path)
+    else:
+        candidates.extend(
+            [
+                os.path.join(app_root, image_path.lstrip("/")),
+                os.path.join(app_root, "static", image_path.lstrip("/")),
+                os.path.join(app_root, "static", "uploads", image_path),
+            ]
+        )
+
+    for candidate in candidates:
+        absolute_path = os.path.abspath(candidate)
+        if os.path.exists(absolute_path):
+            return f"file:///{absolute_path.replace(os.sep, '/')}"
+    return image_path
+
+
+def _xhtml2pdf_link_callback(uri, _rel):
+    if not uri:
+        return uri
+
+    if uri.startswith("file:///"):
+        parsed = urlparse(uri)
+        resolved = unquote(parsed.path or "")
+        if os.name == "nt" and resolved.startswith("/"):
+            resolved = resolved[1:]
+        return resolved
+
+    if uri.startswith(("http://", "https://")):
+        return uri
+
+    if uri.startswith("/static/"):
+        static_path = os.path.join(current_app.root_path, "static", uri[len("/static/"):].lstrip("/"))
+        return os.path.abspath(static_path)
+
+    return uri
+
+
+def select_invoice_template(invoice_type):
+    invoice_kind = str(invoice_type or "").strip().upper()
+    if invoice_kind == "TAX":
+        return "invoices/tax.html"
+    if invoice_kind == "PI":
+        return "invoices/pi.html"
+    return "invoices/invoice.html"
+
+
 def _normalize_invoice(invoice):
-    return {
-        "id": _row_get(invoice, 0),
-        "invoice_number": _row_get(invoice, 1, ""),
-        "invoice_type": _row_get(invoice, 2, "PI"),
-        "customer_id": _row_get(invoice, 3),
-        "subtotal": _to_decimal(_row_get(invoice, 4, 0)),
-        "tax_amount": _to_decimal(_row_get(invoice, 5, 0)),
-        "total": _to_decimal(_row_get(invoice, 6, 0)),
-        "cgst": _to_decimal(_row_get(invoice, 7, 0)),
-        "sgst": _to_decimal(_row_get(invoice, 8, 0)),
-        "igst": _to_decimal(_row_get(invoice, 9, 0)),
-        "status": _row_get(invoice, 10, "unpaid"),
-        "lead_id": _row_get(invoice, 11),
-        "created_at": _row_get(invoice, 12, ""),
-        "po_number": _row_get(invoice, 13, ""),
-        "place_of_supply": _row_get(invoice, 14, ""),
-        "payment_terms": _row_get(invoice, 15, "Net 30 days"),
-        "due_date": _row_get(invoice, 16, ""),
-        "total_in_words": _row_get(invoice, 17, ""),
+    data = {
+        "id": _row_get(invoice, "id", _row_get(invoice, 0)),
+        "invoice_number": _display_value(_row_get(invoice, "invoice_number", _row_get(invoice, 1, "")), "invoice"),
+        "invoice_type": _display_value(_row_get(invoice, "invoice_type", _row_get(invoice, 2, "PI")), "PI").upper(),
+        "customer_id": _row_get(invoice, "customer_id", _row_get(invoice, 3)),
+        "subtotal": _to_decimal(_row_get(invoice, "subtotal", _row_get(invoice, 4, 0))),
+        "tax_amount": _to_decimal(_row_get(invoice, "tax_amount", _row_get(invoice, 5, 0))),
+        "total": _to_decimal(_row_get(invoice, "total", _row_get(invoice, 6, 0))),
+        "cgst": _to_decimal(_row_get(invoice, "cgst", _row_get(invoice, 7, 0))),
+        "sgst": _to_decimal(_row_get(invoice, "sgst", _row_get(invoice, 8, 0))),
+        "igst": _to_decimal(_row_get(invoice, "igst", _row_get(invoice, 9, 0))),
+        "status": _display_value(_row_get(invoice, "status", _row_get(invoice, 10, "unpaid")), "unpaid"),
+        "lead_id": _row_get(invoice, "lead_id", _row_get(invoice, 11)),
+        "created_at": _row_get(invoice, "created_at", _row_get(invoice, 12, "")),
+        "po_number": _display_value(_row_get(invoice, "po_number", _row_get(invoice, 13, ""))),
+        "place_of_supply": _display_value(_row_get(invoice, "place_of_supply", _row_get(invoice, 14, ""))),
+        "payment_terms": _display_value(_row_get(invoice, "payment_terms", _row_get(invoice, 15, "Net 30 days")), "Net 30 days"),
+        "due_date": _row_get(invoice, "due_date", _row_get(invoice, 16, "")),
+        "total_in_words": _display_value(_row_get(invoice, "total_in_words", _row_get(invoice, 17, ""))),
+        "reference_no_date": _display_value(_row_get(invoice, "reference_no_date", "")),
+        "other_references": _display_value(_row_get(invoice, "other_references", "")),
+        "remarks": _display_value(_row_get(invoice, "remarks", "")),
     }
+
+    pos_name, pos_code = split_place_of_supply(data["place_of_supply"])
+    data["created_at_display"] = _display_value(format_invoice_date(data["created_at"]))
+    data["due_date_display"] = _display_value(format_invoice_date(data["due_date"]))
+    data["place_of_supply_name"] = pos_name
+    data["place_of_supply_code"] = pos_code
+    data["place_of_supply_display"] = _display_value(format_state_with_code(pos_name, pos_code))
+    data["tax_total"] = (data["cgst"] + data["sgst"] + data["igst"]).quantize(Decimal("0.01"))
+    data["is_intra_state"] = data["cgst"] > 0 or data["sgst"] > 0
+    data["cgst_rate_percent"] = "9" if data["cgst"] > 0 else "0"
+    data["sgst_rate_percent"] = "9" if data["sgst"] > 0 else "0"
+    data["igst_rate_percent"] = "18" if data["igst"] > 0 else "0"
+    if data["total_in_words"] in ("", "-"):
+        data["total_in_words"] = number_to_words_indian(float(data["total"]))
+    data["tax_in_words"] = number_to_words_indian(float(data["tax_total"])) if data["tax_total"] > 0 else "-"
+    return data
 
 
 def _normalize_customer(customer):
     if isinstance(customer, dict):
-        return {
-            "name": customer.get("name", ""),
-            "email": customer.get("email", ""),
-            "gstin": customer.get("gstin", ""),
+        data = {
+            "name": _display_value(customer.get("name")),
+            "email": _display_value(customer.get("email")),
+            "gstin": (customer.get("gstin") or "").strip(),
             "state": customer.get("state", ""),
-            "address": customer.get("address", ""),
-            "contact": customer.get("contact") or customer.get("phone", ""),
+            "state_code": customer.get("state_code", ""),
+            "address": _display_value(customer.get("address")),
+            "contact": _display_value(customer.get("contact") or customer.get("phone", "")),
         }
-
-    return {
-        "name": _row_get(customer, 1, ""),
-        "email": _row_get(customer, 2, ""),
-        "gstin": _row_get(customer, 3, ""),
-        "state": _row_get(customer, 4, ""),
-        "address": _row_get(customer, 5, ""),
-        "contact": _row_get(customer, 6, _row_get(customer, 5, "")),
-    }
+    else:
+        data = {
+            "name": _display_value(_row_get(customer, 1, "")),
+            "email": _display_value(_row_get(customer, 2, "")),
+            "gstin": (_row_get(customer, 3, "") or "").strip(),
+            "state": _row_get(customer, 4, ""),
+            "address": _display_value(_row_get(customer, 5, "")),
+            "contact": _display_value(_row_get(customer, 6, _row_get(customer, 5, ""))),
+            "state_code": _row_get(customer, 7, ""),
+        }
+    data["state"], data["state_code"] = resolve_state_and_code(data.get("state"), data.get("state_code"), data["gstin"])
+    data["state_display"] = _display_value(format_state_with_code(data["state"], data["state_code"]))
+    data["gstin_display"] = data["gstin"] or "Unregistered"
+    return data
 
 
 def _normalize_company(company):
     if isinstance(company, dict):
-        return {
-            "name": company.get("name", ""),
-            "gstin": company.get("gstin", ""),
-            "address": company.get("address", ""),
+        data = {
+            "name": _display_value(company.get("name")),
+            "gstin": (company.get("gstin") or "").strip(),
+            "address": _display_value(company.get("address")),
             "logo_path": company.get("logo_path", ""),
-            "email": company.get("email", ""),
-            "phone": company.get("phone", ""),
-            "bank_name": company.get("bank_name", ""),
-            "bank_account": company.get("bank_account", ""),
-            "ifsc_code": company.get("ifsc_code", ""),
+            "email": _display_value(company.get("email")),
+            "phone": _display_value(company.get("phone")),
+            "bank_name": _display_value(company.get("bank_name")),
+            "bank_account": _display_value(company.get("bank_account")),
+            "ifsc_code": _display_value(company.get("ifsc_code") or company.get("bank_ifsc")),
+            "state": company.get("state", ""),
+            "state_code": company.get("state_code", ""),
+            "upi_id": _display_value(company.get("upi_id")),
         }
-
-    return {
-        "name": _row_get(company, 1, ""),
-        "gstin": _row_get(company, 2, ""),
-        "address": _row_get(company, 3, ""),
-        "logo_path": _row_get(company, 4, ""),
-        "email": _row_get(company, 5, ""),
-        "phone": _row_get(company, 6, ""),
-        "bank_name": _row_get(company, 8, ""),
-        "bank_account": _row_get(company, 9, ""),
-        "ifsc_code": _row_get(company, 10, ""),
-    }
+    else:
+        data = {
+            "name": _display_value(_row_get(company, 1, "")),
+            "gstin": (_row_get(company, 2, "") or "").strip(),
+            "address": _display_value(_row_get(company, 3, "")),
+            "logo_path": _row_get(company, 4, ""),
+            "email": _display_value(_row_get(company, 5, "")),
+            "phone": _display_value(_row_get(company, 6, "")),
+            "bank_name": _display_value(_row_get(company, 8, "")),
+            "bank_account": _display_value(_row_get(company, 9, "")),
+            "ifsc_code": _display_value(_row_get(company, 10, "")),
+            "state": _row_get(company, 11, ""),
+            "state_code": _row_get(company, 12, ""),
+            "upi_id": _display_value(_row_get(company, 13, "")),
+        }
+    data["state"], data["state_code"] = resolve_state_and_code(data.get("state"), data.get("state_code"), data["gstin"])
+    data["state_display"] = _display_value(format_state_with_code(data["state"], data["state_code"]))
+    data["account_number"] = data.get("bank_account", "-")
+    data["ifsc"] = data.get("ifsc_code", "-")
+    data["gstin_display"] = data["gstin"] or "Unregistered"
+    return data
 
 
 def _normalize_items(items):
     normalized = []
     for item in items or []:
-        name = _row_get(item, "name", _row_get(item, 2, ""))
         qty = _to_decimal(_row_get(item, "qty", _row_get(item, 3, 0)))
         price = _to_decimal(_row_get(item, "price", _row_get(item, 4, 0)))
-        hsn = _row_get(item, "hsn", _row_get(item, 5, "998314"))
         normalized.append(
             {
-                "name": name,
+                "name": _display_value(_row_get(item, "name", _row_get(item, 2, ""))),
                 "qty": qty,
+                "qty_display": _format_quantity(qty),
                 "price": price,
-                "line_total": qty * price,
-                "hsn": hsn,
+                "line_total": (qty * price).quantize(Decimal("0.01")),
+                "hsn": _display_value(_row_get(item, "hsn", _row_get(item, 5, "998314")), "998314"),
+                "tax_rate": _to_decimal(_row_get(item, "tax_rate", _row_get(item, 6, 18))),
+                "unit_label": _display_value(_row_get(item, "unit_label", _row_get(item, "per", "Nos")), "Nos"),
             }
         )
     return normalized
 
 
-def _build_context(invoice, customer, items, company):
+def _build_tax_rows(invoice_data, items_data):
+    default_hsn = items_data[0]["hsn"] if items_data else "998314"
+    rows = []
+    if invoice_data["cgst"] > 0:
+        rows.append(
+            {
+                "label": "CGST",
+                "hsn": default_hsn,
+                "rate": f"{invoice_data['cgst_rate_percent']}%",
+                "taxable_value": invoice_data["subtotal"],
+                "amount": invoice_data["cgst"],
+            }
+        )
+    if invoice_data["sgst"] > 0:
+        rows.append(
+            {
+                "label": "SGST",
+                "hsn": default_hsn,
+                "rate": f"{invoice_data['sgst_rate_percent']}%",
+                "taxable_value": invoice_data["subtotal"],
+                "amount": invoice_data["sgst"],
+            }
+        )
+    if invoice_data["igst"] > 0:
+        rows.append(
+            {
+                "label": "IGST",
+                "hsn": default_hsn,
+                "rate": f"{invoice_data['igst_rate_percent']}%",
+                "taxable_value": invoice_data["subtotal"],
+                "amount": invoice_data["igst"],
+            }
+        )
+    return rows
+
+
+def build_invoice_context(invoice, customer, items, company, pdf_mode=False):
     invoice_data = _normalize_invoice(invoice)
     company_data = _normalize_company(company)
-    # Resolve logo path for PDF generation
-    if company_data.get("logo_path"):
-        company_data["logo_path"] = _resolve_image_path(company_data["logo_path"])
-    
+    customer_data = _normalize_customer(customer)
+    items_data = _normalize_items(items)
+    tax_rows = _build_tax_rows(invoice_data, items_data)
+
+    if company_data.get("logo_path") and company_data["logo_path"] != "-":
+        company_data["logo_src"] = (
+            _resolve_image_path(company_data["logo_path"])
+            if pdf_mode
+            else url_for("static", filename=f"uploads/{company_data['logo_path']}")
+        )
+    else:
+        company_data["logo_src"] = ""
+
+    document_title = "PROFORMA INVOICE" if invoice_data["invoice_type"] == "PI" else "TAX INVOICE"
     return {
         "invoice": invoice_data,
-        "customer": _normalize_customer(customer),
-        "items": _normalize_items(items),
+        "customer": customer_data,
+        "items": items_data,
         "company": company_data,
-        "document_title": "PROFORMA INVOICE" if invoice_data["invoice_type"] == "PI" else "TAX INVOICE",
+        "tax_rows": tax_rows,
+        "document_title": document_title,
+        "declaration_text": "We declare that this invoice shows the actual price of the services described and that all particulars are true and correct.",
+        "pdf_mode": pdf_mode,
+        "format_money": _format_money,
+        "format_quantity": _format_quantity,
     }
 
 
-def _draw_wrapped_text(pdf, text, x, y, max_width, line_height=12):
-    text = (text or "").strip()
-    if not text:
-        return y
-
-    words = text.split()
-    current = []
-    for word in words:
-        candidate = " ".join(current + [word])
-        if pdf.stringWidth(candidate, "Helvetica", 10) <= max_width:
-            current.append(word)
-        else:
-            pdf.drawString(x, y, " ".join(current))
-            y -= line_height
-            current = [word]
-
-    if current:
-        pdf.drawString(x, y, " ".join(current))
-        y -= line_height
-
-    return y
-
-
-def _generate_reportlab_pdf(context, file_path):
-    pdf = canvas.Canvas(file_path, pagesize=A4)
-    width, height = A4
-
-    left = 18 * mm
-    right = width - (18 * mm)
-    logo_x = right - 50 * mm
-    y = height - (20 * mm)
-
-    invoice = context["invoice"]
-    customer = context["customer"]
-    company = context["company"]
-    items = context["items"]
-
-    # Draw logo if available
-    if company.get("logo_path"):
-        try:
-            logo_path = company["logo_path"]
-            # Handle file:// URLs
-            if logo_path.startswith("file://"):
-                logo_path = logo_path[7:]  # Remove file:// prefix
-            
-            if os.path.exists(logo_path):
-                img = ImageReader(logo_path)
-                img_width, img_height = img.getSize()
-                # Scale logo to fit (max 40mm width, 15mm height)
-                max_width = 40 * mm
-                max_height = 15 * mm
-                scale = min(max_width / img_width, max_height / img_height, 1.0)
-                final_width = img_width * scale
-                final_height = img_height * scale
-                
-                pdf.drawImage(logo_path, logo_x, y - final_height, 
-                            width=final_width, height=final_height, 
-                            preserveAspectRatio=True)
-                y -= (final_height + 5 * mm)
-        except Exception as e:
-            print(f"Warning: Could not load logo: {e}")
-
-    pdf.setFont("Helvetica-Bold", 16)
-    pdf.drawString(left, y, company["name"] or "Company")
-    pdf.setFont("Helvetica", 10)
-    y -= 14
-    y = _draw_wrapped_text(pdf, company["address"], left, y, 95 * mm)
-    if company["gstin"]:
-        pdf.drawString(left, y, f"GSTIN: {company['gstin']}")
-        y -= 12
-    if company["phone"]:
-        pdf.drawString(left, y, f"Phone: {company['phone']}")
-        y -= 12
-    if company["email"]:
-        pdf.drawString(left, y, f"Email: {company['email']}")
-        y -= 12
-
-    title_y = height - (20 * mm)
-    pdf.setFont("Helvetica-Bold", 15)
-    pdf.drawRightString(right, title_y, context["document_title"])
-    pdf.setFont("Helvetica", 10)
-    pdf.drawRightString(right, title_y - 16, f"Invoice No: {invoice['invoice_number']}")
-    pdf.drawRightString(right, title_y - 30, f"Date: {invoice['created_at']}")
-
-    y -= 10
-    pdf.setStrokeColor(colors.grey)
-    pdf.line(left, y, right, y)
-    y -= 20
-
-    pdf.setFont("Helvetica-Bold", 11)
-    pdf.drawString(left, y, "Bill To")
-    y -= 14
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(left, y, customer["name"] or "Customer")
-    y -= 12
-    pdf.setFont("Helvetica", 10)
-    y = _draw_wrapped_text(pdf, customer["address"], left, y, 110 * mm)
-    if customer["contact"]:
-        pdf.drawString(left, y, f"Contact: {customer['contact']}")
-        y -= 12
-    if customer["email"]:
-        pdf.drawString(left, y, f"Email: {customer['email']}")
-        y -= 12
-    if customer["gstin"]:
-        pdf.drawString(left, y, f"GSTIN: {customer['gstin']}")
-        y -= 12
-    y -= 10
-
-    table_top = y
-    row_height = 10 * mm
-    col_x = [left, left + 15 * mm, left + 95 * mm, left + 120 * mm, left + 150 * mm, right]
-
-    pdf.setFillColor(colors.HexColor("#f2f2f2"))
-    pdf.rect(left, table_top - row_height + 2, right - left, row_height, fill=1, stroke=0)
-    pdf.setFillColor(colors.black)
-    pdf.setFont("Helvetica-Bold", 10)
-    headers = ["#", "Item", "Qty", "Price", "Total"]
-    header_positions = [col_x[0] + 3, col_x[1] + 3, col_x[2] + 3, col_x[3] + 3, col_x[4] + 3]
-    for header, position in zip(headers, header_positions):
-        pdf.drawString(position, table_top - 5 * mm, header)
-
-    y = table_top - row_height - 2
-    pdf.setFont("Helvetica", 10)
-    for index, item in enumerate(items, start=1):
-        if y < 55 * mm:
-            pdf.showPage()
-            pdf.setFont("Helvetica", 10)
-            y = height - (25 * mm)
-        pdf.drawString(col_x[0] + 3, y, str(index))
-        pdf.drawString(col_x[1] + 3, y, str(item["name"]))
-        pdf.drawRightString(col_x[3] - 4, y, str(item["qty"]))
-        pdf.drawRightString(col_x[4] - 4, y, _format_money(item["price"]))
-        pdf.drawRightString(right - 4, y, _format_money(item["line_total"]))
-        y -= 14
-
-    y -= 8
-    summary_x_label = left + 115 * mm
-    summary_x_value = right
-    summary_rows = [("Subtotal", invoice["subtotal"])]
-    if invoice["cgst"] > 0 or invoice["sgst"] > 0:
-        summary_rows.append(("CGST", invoice["cgst"]))
-        summary_rows.append(("SGST", invoice["sgst"]))
-    elif invoice["igst"] > 0:
-        summary_rows.append(("IGST", invoice["igst"]))
-    elif invoice["tax_amount"] > 0:
-        summary_rows.append(("Tax", invoice["tax_amount"]))
-    summary_rows.append(("Total", invoice["total"]))
-
-    for label, value in summary_rows:
-        font_name = "Helvetica-Bold" if label == "Total" else "Helvetica"
-        pdf.setFont(font_name, 10)
-        pdf.drawString(summary_x_label, y, label)
-        pdf.drawRightString(summary_x_value, y, _format_money(value))
-        y -= 14
-
-    y -= 16
-    pdf.setFont("Helvetica-Bold", 10)
-    pdf.drawString(left, y, "Terms & Conditions")
-    y -= 14
-    pdf.setFont("Helvetica", 10)
-    pdf.drawString(left, y, "1. Payment due within 7 days.")
-    y -= 12
-    pdf.drawString(left, y, "2. No refund after service delivery.")
-    y -= 24
-
-    if company["bank_name"] or company["bank_account"] or company["ifsc_code"]:
-        pdf.setFont("Helvetica-Bold", 10)
-        pdf.drawString(left, y, "Bank Details")
-        y -= 14
-        pdf.setFont("Helvetica", 10)
-        if company["bank_name"]:
-            pdf.drawString(left, y, f"Bank: {company['bank_name']}")
-            y -= 12
-        if company["bank_account"]:
-            pdf.drawString(left, y, f"Account No: {company['bank_account']}")
-            y -= 12
-        if company["ifsc_code"]:
-            pdf.drawString(left, y, f"IFSC: {company['ifsc_code']}")
-            y -= 12
-
-    pdf.setFont("Helvetica", 10)
-    pdf.drawRightString(right, 25 * mm, f"Authorized Signatory - {company['name'] or 'Company'}")
-    pdf.save()
-
-
-def _pdf_escape(value):
-    return str(value).replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
-
-
-def _generate_basic_pdf(context, file_path):
-    invoice = context["invoice"]
-    customer = context["customer"]
-    company = context["company"]
-    items = context["items"]
-
-    lines = [
-        (16, 50, 800, company["name"] or "Company"),
-        (11, 50, 784, company["address"] or ""),
-        (11, 50, 768, f"GSTIN: {company['gstin']}" if company["gstin"] else ""),
-        (14, 380, 800, context["document_title"]),
-        (11, 380, 784, f"Invoice No: {invoice['invoice_number']}"),
-        (11, 380, 768, f"Date: {invoice['created_at']}"),
-        (12, 50, 730, "Bill To"),
-        (11, 50, 714, customer["name"] or "Customer"),
-        (11, 50, 698, customer["address"] or ""),
-        (11, 50, 682, f"GSTIN: {customer['gstin']}" if customer["gstin"] else ""),
-        (11, 50, 660, "Items"),
-    ]
-
-    y = 642
-    for index, item in enumerate(items, start=1):
-        line = f"{index}. {item['name']} | Qty: {item['qty']} | Price: {_format_money(item['price'])} | Amount: {_format_money(item['line_total'])}"
-        lines.append((10, 50, y, line))
-        y -= 16
-
-    y -= 8
-    lines.append((11, 320, y, f"Subtotal: {_format_money(invoice['subtotal'])}"))
-    y -= 16
-    if invoice["cgst"] > 0 or invoice["sgst"] > 0:
-        lines.append((11, 320, y, f"CGST: {_format_money(invoice['cgst'])}"))
-        y -= 16
-        lines.append((11, 320, y, f"SGST: {_format_money(invoice['sgst'])}"))
-        y -= 16
-    elif invoice["igst"] > 0:
-        lines.append((11, 320, y, f"IGST: {_format_money(invoice['igst'])}"))
-        y -= 16
-    lines.append((12, 320, y, f"Total: {_format_money(invoice['total'])}"))
-    y -= 28
-
-    if company["bank_name"] or company["bank_account"] or company["ifsc_code"]:
-        lines.append((11, 50, y, "Bank Details"))
-        y -= 16
-        if company["bank_name"]:
-            lines.append((10, 50, y, f"Bank: {company['bank_name']}"))
-            y -= 14
-        if company["bank_account"]:
-            lines.append((10, 50, y, f"Account: {company['bank_account']}"))
-            y -= 14
-        if company["ifsc_code"]:
-            lines.append((10, 50, y, f"IFSC: {company['ifsc_code']}"))
-            y -= 14
-
-    lines.append((10, 50, max(y - 20, 60), f"Authorized Signatory - {company['name'] or 'Company'}"))
-
-    content_parts = ["BT\n"]
-    for font_size, x, line_y, text in lines:
-        if not text:
-            continue
-        content_parts.append(f"/F1 {font_size} Tf 1 0 0 1 {x} {line_y} Tm ({_pdf_escape(text)}) Tj\n")
-    content_parts.append("ET\n")
-    content = "".join(content_parts).encode("latin-1", errors="replace")
-
-    objects = [
-        b"<< /Type /Catalog /Pages 2 0 R >>",
-        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
-        f"<< /Length {len(content)} >>\nstream\n".encode("latin-1") + content + b"endstream",
-        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    ]
-
-    pdf = bytearray(b"%PDF-1.4\n")
-    offsets = [0]
-    for index, obj in enumerate(objects, start=1):
-        offsets.append(len(pdf))
-        pdf.extend(f"{index} 0 obj\n".encode("latin-1"))
-        pdf.extend(obj)
-        pdf.extend(b"\nendobj\n")
-
-    xref_offset = len(pdf)
-    pdf.extend(f"xref\n0 {len(objects) + 1}\n".encode("latin-1"))
-    pdf.extend(b"0000000000 65535 f \n")
-    for offset in offsets[1:]:
-        pdf.extend(f"{offset:010d} 00000 n \n".encode("latin-1"))
-    pdf.extend(
-        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF".encode("latin-1")
-    )
-
-    with open(file_path, "wb") as pdf_file:
-        pdf_file.write(pdf)
-
-
 def generate_invoice_pdf(invoice, customer, items, company):
-    context = _build_context(invoice, customer, items, company)
+    context = build_invoice_context(invoice, customer, items, company, pdf_mode=True)
     invoice_number = context["invoice"]["invoice_number"] or "invoice"
     safe_invoice_number = "".join(ch if ch.isalnum() or ch in ("-", "_") else "_" for ch in str(invoice_number))
     file_path = os.path.join(tempfile.gettempdir(), f"{safe_invoice_number}.pdf")
-    template = "invoices/pi.html" if context["invoice"]["invoice_type"] == "PI" else "invoices/tax.html"
+    template = select_invoice_template(context["invoice"]["invoice_type"])
     html = render_template(template, **context)
 
-    if WEASYPRINT_AVAILABLE:
-        HTML(string=html).write_pdf(file_path)
-    elif PDFKIT_AVAILABLE:
+    if _load_weasyprint():
+        HTML(string=html, base_url=current_app.root_path).write_pdf(file_path)
+        return file_path
+
+    if PDFKIT_AVAILABLE:
         config = _pdfkit_configuration()
         if config:
-            pdfkit.from_string(html, file_path, configuration=config)
-        elif REPORTLAB_AVAILABLE:
-            _generate_reportlab_pdf(context, file_path)
-        else:
-            _generate_basic_pdf(context, file_path)
-    elif REPORTLAB_AVAILABLE:
-        _generate_reportlab_pdf(context, file_path)
-    else:
-        _generate_basic_pdf(context, file_path)
+            options = {
+                "enable-local-file-access": None,
+                "page-size": "A4",
+                "margin-top": "8mm",
+                "margin-bottom": "8mm",
+                "margin-left": "8mm",
+                "margin-right": "8mm",
+                "dpi": 300,
+                "encoding": "UTF-8",
+                "print-media-type": None,
+                "disable-smart-shrinking": None,
+                "quiet": None,
+            }
+            pdfkit.from_string(html, file_path, configuration=config, options=options)
+            return file_path
 
-    return file_path
+    if XHTML2PDF_AVAILABLE:
+        with open(file_path, "wb") as pdf_file:
+            pisa_status = pisa.CreatePDF(html, dest=pdf_file, link_callback=_xhtml2pdf_link_callback)
+        if not pisa_status.err:
+            return file_path
+
+    raise RuntimeError(
+        "No HTML-compatible PDF engine is available. "
+        "Install WeasyPrint for the best print fidelity, or install wkhtmltopdf/pdfkit or xhtml2pdf."
+    )

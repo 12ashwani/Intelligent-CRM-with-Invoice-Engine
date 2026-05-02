@@ -2,73 +2,529 @@
 
 {% block content %}
 
-<div class="container mt-5">
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h3 class="mb-0">Company Settings</h3>
+<div class="container-fluid px-4 mt-4">
+    <div class="row mb-4">
+        <div class="col">
+            <h2 class="fw-bold">
+                <i class="fas fa-building text-primary me-2"></i>Company Settings
+            </h2>
+            <p class="text-muted">Manage your business information, GST details, and bank accounts for invoices</p>
         </div>
-        <div class="card-body">
-            <form method="post" enctype="multipart/form-data">
+    </div>
 
-                <h5 class="mt-4">Company Information</h5>
-                <hr>
-
-                <div class="mb-3">
-                    <label for="name" class="form-label">Company Name</label>
-                    <input type="text" id="name" name="name" placeholder="Company Name" class="form-control"
-                           value="{{ company[1] if company else '' }}" required>
+    <div class="row">
+        <div class="col-lg-3 mb-4">
+            <!-- Settings Navigation -->
+            <div class="card border-0 shadow-sm sticky-top" style="top: 80px;">
+                <div class="list-group list-group-flush rounded-3">
+                    <a href="#company-info" class="list-group-item list-group-item-action active" data-scroll>
+                        <i class="fas fa-building me-2"></i>Company Information
+                    </a>
+                    <a href="#tax-info" class="list-group-item list-group-item-action" data-scroll>
+                        <i class="fas fa-file-invoice-dollar me-2"></i>Tax & GST Details
+                    </a>
+                    <a href="#bank-details" class="list-group-item list-group-item-action" data-scroll>
+                        <i class="fas fa-university me-2"></i>Bank Account Details
+                    </a>
+                    <a href="#payment-info" class="list-group-item list-group-item-action" data-scroll>
+                        <i class="fas fa-qrcode me-2"></i>Payment Information
+                    </a>
+                    <a href="#invoice-settings" class="list-group-item list-group-item-action" data-scroll>
+                        <i class="fas fa-sliders-h me-2"></i>Invoice Settings
+                    </a>
                 </div>
+            </div>
+        </div>
 
-                <div class="mb-3">
-                    <label for="gstin" class="form-label">GSTIN</label>
-                    <input type="text" id="gstin" name="gstin" placeholder="GSTIN" class="form-control"
-                           value="{{ company[2] if company else '' }}" required>
-                </div>
-
-                <div class="mb-3">
-                    <label for="address" class="form-label">Address</label>
-                    <textarea id="address" name="address" placeholder="Address" class="form-control" rows="3" required>{{ company[3] if company else '' }}</textarea>
-                </div>
-
-                <div class="mb-3">
-                    <label for="logo" class="form-label">Upload Logo</label>
-                    <input type="file" id="logo" name="logo" class="form-control" accept="image/*">
-                    {% if company and company[4] %}
-                        <div class="mt-2">
-                            <small class="text-muted">Current Logo:</small>
-                            <img src="/static/uploads/{{ company[4] }}" width="120" class="img-thumbnail mt-2">
+        <div class="col-lg-9">
+            <form method="post" enctype="multipart/form-data" id="companySettingsForm">
+                <!-- Company Information Section -->
+                <div class="card border-0 shadow-sm mb-4" id="company-info">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-building text-primary me-2"></i>Company Information
+                        </h5>
+                        <p class="text-muted small mb-0 mt-1">Basic business details that appear on invoices</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="name" class="form-label fw-semibold">
+                                        <i class="fas fa-tag me-1 text-muted"></i>Legal Company Name *
+                                    </label>
+                                    <input type="text" id="name" name="name" 
+                                           class="form-control form-control-lg" 
+                                           placeholder="Your Business Name Pvt Ltd"
+                                           value="{{ company.name if company else '' }}" 
+                                           required>
+                                    <div class="form-text">This name will appear prominently on all invoices</div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="display_name" class="form-label fw-semibold">
+                                        <i class="fas fa-signature me-1 text-muted"></i>Display Name
+                                    </label>
+                                    <input type="text" id="display_name" name="display_name" 
+                                           class="form-control" 
+                                           placeholder="Short name (optional)"
+                                           value="{{ company.display_name if company else '' }}">
+                                </div>
+                            </div>
                         </div>
-                    {% endif %}
+
+                        <div class="mb-3">
+                            <label for="address" class="form-label fw-semibold">
+                                <i class="fas fa-map-marker-alt me-1 text-muted"></i>Registered Office Address *
+                            </label>
+                            <textarea id="address" name="address" 
+                                      class="form-control" 
+                                      rows="3" 
+                                      placeholder="123 Business Street, Area Name, City - 400001, State, India"
+                                      required>{{ company.address if company else '' }}</textarea>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i> 
+                                Must include 6-digit PIN code for GST compliance
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="email" class="form-label fw-semibold">
+                                        <i class="fas fa-envelope me-1 text-muted"></i>Email Address
+                                    </label>
+                                    <input type="email" id="email" name="email" 
+                                           class="form-control" 
+                                           placeholder="accounts@yourcompany.com"
+                                           value="{{ company.email if company else '' }}">
+                                    <div class="form-text">Used for invoice receipts and customer communication</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label fw-semibold">
+                                        <i class="fas fa-phone me-1 text-muted"></i>Phone Number
+                                    </label>
+                                    <input type="tel" id="phone" name="phone" 
+                                           class="form-control" 
+                                           placeholder="+91-9876543210"
+                                           value="{{ company.phone if company else '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="website" class="form-label fw-semibold">
+                                <i class="fas fa-globe me-1 text-muted"></i>Website
+                            </label>
+                            <input type="url" id="website" name="website" 
+                                   class="form-control" 
+                                   placeholder="https://www.yourcompany.com"
+                                   value="{{ company.website if company else '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="logo" class="form-label fw-semibold">
+                                <i class="fas fa-image me-1 text-muted"></i>Company Logo
+                            </label>
+                            <input type="file" id="logo" name="logo" class="form-control" accept="image/*">
+                            {% if company and company.logo_path %}
+                                <div class="mt-3">
+                                    <small class="text-muted">Current Logo:</small>
+                                    <div class="mt-2">
+                                        <img src="/static/uploads/{{ company.logo_path }}" 
+                                             class="img-thumbnail" 
+                                             style="max-height: 80px;">
+                                        <label class="ms-3">
+                                            <input type="checkbox" name="remove_logo" value="1"> Remove logo
+                                        </label>
+                                    </div>
+                                </div>
+                            {% endif %}
+                            <div class="form-text">Recommended: Square image, 200x200px, PNG or JPG format</div>
+                        </div>
+                    </div>
                 </div>
 
-                <h5 class="mt-5">Bank Account Details</h5>
-                <hr>
+                <!-- Tax & GST Information -->
+                <div class="card border-0 shadow-sm mb-4" id="tax-info">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-file-invoice-dollar text-primary me-2"></i>Tax & GST Details
+                        </h5>
+                        <p class="text-muted small mb-0 mt-1">Required for GST-compliant invoices</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="gstin" class="form-label fw-semibold">
+                                        <i class="fas fa-id-card me-1 text-muted"></i>GSTIN *
+                                    </label>
+                                    <input type="text" id="gstin" name="gstin" 
+                                           class="form-control form-control-lg" 
+                                           placeholder="22AAAAA0000A1Z"
+                                           value="{{ company.gstin if company else '' }}" 
+                                           required>
+                                    <div class="form-text">15-character GST Identification Number</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="pan" class="form-label fw-semibold">
+                                        <i class="fas fa-credit-card me-1 text-muted"></i>PAN Number
+                                    </label>
+                                    <input type="text" id="pan" name="pan" 
+                                           class="form-control" 
+                                           placeholder="AAAAA1234A"
+                                           value="{{ company.pan if company else '' }}">
+                                </div>
+                            </div>
+                        </div>
 
-                <div class="mb-3">
-                    <label for="bank_name" class="form-label">Bank Name</label>
-                    <input type="text" id="bank_name" name="bank_name" placeholder="e.g., State Bank of India" class="form-control"
-                           value="{{ company[8] if company and company|length > 8 else '' }}">
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="state" class="form-label fw-semibold">
+                                        <i class="fas fa-map-pin me-1 text-muted"></i>State Name
+                                    </label>
+                                    <input type="text" id="state" name="state" 
+                                           class="form-control" 
+                                           placeholder="Maharashtra"
+                                           value="{{ company.state if company else '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="state_code" class="form-label fw-semibold">
+                                        <i class="fas fa-hashtag me-1 text-muted"></i>State Code
+                                    </label>
+                                    <input type="text" id="state_code" name="state_code" 
+                                           class="form-control" 
+                                           placeholder="27"
+                                           value="{{ company.state_code if company else '' }}">
+                                    <div class="form-text">2-digit GST state code</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="cin" class="form-label fw-semibold">
+                                        <i class="fas fa-building me-1 text-muted"></i>CIN Number
+                                    </label>
+                                    <input type="text" id="cin" name="cin" 
+                                           class="form-control" 
+                                           placeholder="U12345MH2020PTC123456"
+                                           value="{{ company.cin if company else '' }}">
+                                    <div class="form-text">Company Identification Number (for Pvt Ltd/Ltd)</div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="gst_treatment" class="form-label fw-semibold">
+                                        <i class="fas fa-chart-line me-1 text-muted"></i>GST Treatment
+                                    </label>
+                                    <select id="gst_treatment" name="gst_treatment" class="form-select">
+                                        <option value="regular" {% if company.gst_treatment == 'regular' %}selected{% endif %}>Regular (Collects GST)</option>
+                                        <option value="composition" {% if company.gst_treatment == 'composition' %}selected{% endif %}>Composition Scheme</option>
+                                        <option value="unregistered" {% if company.gst_treatment == 'unregistered' %}selected{% endif %}>Unregistered</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label for="bank_account" class="form-label">Account Number</label>
-                    <input type="text" id="bank_account" name="bank_account" placeholder="Bank Account Number" class="form-control"
-                           value="{{ company[9] if company and company|length > 9 else '' }}">
+                <!-- Bank Account Details -->
+                <div class="card border-0 shadow-sm mb-4" id="bank-details">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-university text-primary me-2"></i>Bank Account Details
+                        </h5>
+                        <p class="text-muted small mb-0 mt-1">Displayed on invoices for payment collection</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label for="bank_name" class="form-label fw-semibold">
+                                <i class="fas fa-university me-1 text-muted"></i>Bank Name
+                            </label>
+                            <input type="text" id="bank_name" name="bank_name" 
+                                   class="form-control" 
+                                   placeholder="State Bank of India"
+                                   value="{{ company.bank_name if company else '' }}">
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="bank_account" class="form-label fw-semibold">
+                                <i class="fas fa-credit-card me-1 text-muted"></i>Account Number
+                            </label>
+                            <input type="text" id="bank_account" name="bank_account" 
+                                   class="form-control" 
+                                   placeholder="1234567890123456"
+                                   value="{{ company.bank_account if company else '' }}">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="confirm_account" class="form-label fw-semibold">
+                                        <i class="fas fa-check-double me-1 text-muted"></i>Confirm Account Number
+                                    </label>
+                                    <input type="text" id="confirm_account" name="confirm_account" 
+                                           class="form-control" 
+                                           placeholder="Re-enter account number"
+                                           value="{{ company.bank_account if company else '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="ifsc_code" class="form-label fw-semibold">
+                                        <i class="fas fa-code me-1 text-muted"></i>IFSC Code
+                                    </label>
+                                    <input type="text" id="ifsc_code" name="ifsc_code" 
+                                           class="form-control" 
+                                           placeholder="SBIN0001234"
+                                           value="{{ company.ifsc_code if company else '' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="branch" class="form-label fw-semibold">
+                                        <i class="fas fa-location-dot me-1 text-muted"></i>Branch Name
+                                    </label>
+                                    <input type="text" id="branch" name="branch" 
+                                           class="form-control" 
+                                           placeholder="Mumbai Main Branch"
+                                           value="{{ company.branch if company else '' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="account_type" class="form-label fw-semibold">
+                                        <i class="fas fa-wallet me-1 text-muted"></i>Account Type
+                                    </label>
+                                    <select id="account_type" name="account_type" class="form-select">
+                                        <option value="">Select type</option>
+                                        <option value="current" {% if company.account_type == 'current' %}selected{% endif %}>Current Account</option>
+                                        <option value="savings" {% if company.account_type == 'savings' %}selected{% endif %}>Savings Account</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mb-3">
-                    <label for="ifsc_code" class="form-label">IFSC Code</label>
-                    <input type="text" id="ifsc_code" name="ifsc_code" placeholder="e.g., SBIN0001234" class="form-control"
-                           value="{{ company[10] if company and company|length > 10 else '' }}">
+                <!-- Payment Information -->
+                <div class="card border-0 shadow-sm mb-4" id="payment-info">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-qrcode text-primary me-2"></i>Payment Information
+                        </h5>
+                        <p class="text-muted small mb-0 mt-1">Digital payment options for customers</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label for="upi_id" class="form-label fw-semibold">
+                                <i class="fas fa-mobile-alt me-1 text-muted"></i>UPI ID / QR Code
+                            </label>
+                            <input type="text" id="upi_id" name="upi_id" 
+                                   class="form-control" 
+                                   placeholder="business@upi"
+                                   value="{{ company.upi_id if company else '' }}">
+                            <div class="form-text">Example: companyname@okhdfcbank or phonenumber@paytm</div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="payment_terms" class="form-label fw-semibold">
+                                        <i class="fas fa-clock me-1 text-muted"></i>Default Payment Terms
+                                    </label>
+                                    <select id="payment_terms" name="payment_terms" class="form-select">
+                                        <option value="0" {% if company.payment_terms == '0' %}selected{% endif %}>Due on Receipt</option>
+                                        <option value="7" {% if company.payment_terms == '7' %}selected{% endif %}>Net 7 Days</option>
+                                        <option value="15" {% if company.payment_terms == '15' %}selected{% endif %}>Net 15 Days</option>
+                                        <option value="30" {% if company.payment_terms == '30' %}selected{% endif %}>Net 30 Days</option>
+                                        <option value="45" {% if company.payment_terms == '45' %}selected{% endif %}>Net 45 Days</option>
+                                        <option value="60" {% if company.payment_terms == '60' %}selected{% endif %}>Net 60 Days</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="late_fee" class="form-label fw-semibold">
+                                        <i class="fas fa-exclamation-triangle me-1 text-muted"></i>Late Payment Fee (%)
+                                    </label>
+                                    <input type="number" step="0.5" id="late_fee" name="late_fee" 
+                                           class="form-control" 
+                                           placeholder="2"
+                                           value="{{ company.late_fee if company else '2' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-primary btn-lg">Save Settings</button>
+                <!-- Invoice Settings -->
+                <div class="card border-0 shadow-sm mb-4" id="invoice-settings">
+                    <div class="card-header bg-white border-0 pt-4 px-4">
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-sliders-h text-primary me-2"></i>Invoice Settings
+                        </h5>
+                        <p class="text-muted small mb-0 mt-1">Customize your invoice appearance</p>
+                    </div>
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label for="invoice_prefix" class="form-label fw-semibold">
+                                <i class="fas fa-hashtag me-1 text-muted"></i>Invoice Number Prefix
+                            </label>
+                            <input type="text" id="invoice_prefix" name="invoice_prefix" 
+                                   class="form-control" 
+                                   placeholder="INV-"
+                                   value="{{ company.invoice_prefix if company else 'INV-' }}">
+                            <div class="form-text">Example: INV-2024-001</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="footer_note" class="form-label fw-semibold">
+                                <i class="fas fa-comment-dots me-1 text-muted"></i>Invoice Footer Note
+                            </label>
+                            <textarea id="footer_note" name="footer_note" 
+                                      class="form-control" 
+                                      rows="2" 
+                                      placeholder="Thank you for your business! For any queries, please contact our support team.">{{ company.footer_note if company else '' }}</textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="terms_conditions" class="form-label fw-semibold">
+                                <i class="fas fa-file-contract me-1 text-muted"></i>Terms & Conditions
+                            </label>
+                            <textarea id="terms_conditions" name="terms_conditions" 
+                                      class="form-control" 
+                                      rows="3" 
+                                      placeholder="1. Payment is due within 30 days&#10;2. Late payments subject to 2% monthly interest&#10;3. Disputes subject to [City] jurisdiction">{{ company.terms_conditions if company else '' }}</textarea>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- Form Actions -->
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-primary btn-lg px-5">
+                                <i class="fas fa-save me-2"></i>Save All Settings
+                            </button>
+                            <button type="reset" class="btn btn-outline-secondary btn-lg px-4" onclick="resetForm()">
+                                <i class="fas fa-undo me-2"></i>Reset
+                            </button>
+                            <a href="/" class="btn btn-link ms-auto">Cancel</a>
+                        </div>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Smooth scroll for navigation
+    const scrollLinks = document.querySelectorAll('[data-scroll]');
+    scrollLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const targetId = this.getAttribute('href');
+            const target = document.querySelector(targetId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Update active state
+                scrollLinks.forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            }
+        });
+    });
+
+    // Bank account validation
+    const accountNumber = document.getElementById('bank_account');
+    const confirmAccount = document.getElementById('confirm_account');
+    
+    if (confirmAccount) {
+        confirmAccount.addEventListener('input', function() {
+            if (accountNumber.value !== this.value) {
+                this.setCustomValidity('Account numbers do not match');
+                this.classList.add('is-invalid');
+            } else {
+                this.setCustomValidity('');
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+
+    // GSTIN validation pattern
+    const gstin = document.getElementById('gstin');
+    if (gstin) {
+        gstin.addEventListener('input', function() {
+            const gstinPattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+            if (this.value && !gstinPattern.test(this.value.toUpperCase())) {
+                this.setCustomValidity('Invalid GSTIN format. Example: 22AAAAA0000A1Z');
+                this.classList.add('is-invalid');
+            } else {
+                this.setCustomValidity('');
+                this.classList.remove('is-invalid');
+                this.value = this.value.toUpperCase();
+            }
+        });
+    }
+
+    // IFSC validation
+    const ifsc = document.getElementById('ifsc_code');
+    if (ifsc) {
+        ifsc.addEventListener('input', function() {
+            const ifscPattern = /^[A-Z]{4}0[A-Z0-9]{6}$/;
+            if (this.value && !ifscPattern.test(this.value.toUpperCase())) {
+                this.setCustomValidity('Invalid IFSC code format');
+                this.classList.add('is-invalid');
+            } else {
+                this.setCustomValidity('');
+                this.classList.remove('is-invalid');
+                this.value = this.value.toUpperCase();
+            }
+        });
+    }
+});
+
+function resetForm() {
+    if (confirm('Are you sure you want to reset all unsaved changes?')) {
+        document.getElementById('companySettingsForm').reset();
+        window.location.reload();
+    }
+}
+</script>
+
+<style>
+    .list-group-item.active {
+        background-color: #0d6efd;
+        border-color: #0d6efd;
+    }
+    .list-group-item-action:hover {
+        background-color: #f8f9fa;
+    }
+    .sticky-top {
+        position: sticky;
+    }
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.15);
+    }
+    .card {
+        scroll-margin-top: 20px;
+    }
+</style>
 
 {% endblock %}

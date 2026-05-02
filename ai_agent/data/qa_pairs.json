@@ -1,0 +1,54 @@
+[
+  {
+    "question": "what is this crm",
+    "answer": "This is a CRM system for managing leads, employees, departments, operations, accounts, payments, attendance, and customer workflow."
+  },
+  {
+    "question": "how can i create a lead",
+    "answer": "Go to the Marketing panel, open the leads page, fill the customer and service details, then submit the form to create a lead."
+  },
+  {
+    "question": "how to assign lead to operations",
+    "answer": "In the Marketing panel, change the lead status to Converted and select an operations executive. The CRM will move that lead to the Operations workflow."
+  },
+  {
+    "question": "what is pending payment",
+    "answer": "Pending payment means either the government fee or professional fee is not fully received yet. Accounts can review and update payment status from the Accounts panel."
+  },
+  {
+    "question": "how to check lead status",
+    "answer": "Open the Leads Dashboard or ask the chatbot for status report. The CRM groups leads by statuses such as Marketing, Assigned to Operations, Ready for Accounts, Pending, Failed, and Completed."
+  },
+  {
+    "question": "what does assigned to operations mean",
+    "answer": "Assigned to Operations means the lead has been converted by Marketing and sent to an operations executive for filing, document work, or service processing."
+  },
+  {
+    "question": "what does ready for accounts mean",
+    "answer": "Ready for Accounts means Operations has completed its work and the lead is ready for payment handling or final account processing."
+  },
+  {
+    "question": "how to mark attendance",
+    "answer": "Open My Profile or Self Service, go to Attendance, then use check-in and check-out. HR can also manage attendance from the HR panel."
+  },
+  {
+    "question": "how to apply leave",
+    "answer": "Go to the Self Service section, open Apply Leave, select the dates and reason, then submit. You can track approval status from Leave Status."
+  },
+  {
+    "question": "who can see all leads",
+    "answer": "Admin can see all leads from the admin leads dashboard. Department users normally see leads assigned to their own role or employee profile."
+  },
+  {
+    "question": "what is completed lead",
+    "answer": "A completed lead is a lead where the service workflow and required account/payment steps are finished."
+  },
+  {
+    "question": "how to change password",
+    "answer": "Open My Profile or the sidebar menu and click Change Password. Enter your current password and new password to update your login."
+  },
+  {
+    "question": "what documents are required for gst registration",
+    "answer": "GST registration usually requires PAN card, Aadhaar card, business address proof, bank statement or cancelled cheque, business constitution document, photograph, and digital signature if required."
+  }
+]

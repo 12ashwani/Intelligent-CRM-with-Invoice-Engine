@@ -1,0 +1,1 @@
+"""MySQLdb compatibility module"""

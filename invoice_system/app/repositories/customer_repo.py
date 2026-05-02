@@ -18,6 +18,7 @@ class CustomerRepo:
             "email": data.get("email", ""),
             "gstin": data.get("gstin", ""),
             "state": data.get("state", ""),
+            "state_code": data.get("state_code", ""),
             "address": data.get("address", ""),
         }
 

@@ -1,5 +1,8 @@
-Flask==2.3.0
-flask-mysqldb==1.0.1
-python-dotenv==1.0.0
-weasyprint==57.0
-Werkzeug==2.3.0
+flask==3.0.*
+mysql-connector-python
+python-dotenv
+pdfkit==1.0.0
+weasyprint>=57.0
+xhtml2pdf>=0.2.15
+werkzeug==3.*
+reportlab>=4.0.0

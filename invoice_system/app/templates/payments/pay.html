@@ -3,88 +3,379 @@
 {% block content %}
 
 <div class="container mt-4">
-    <div class="row mb-4">
+    <!-- Page Header -->
+    <div class="row mb-4 align-items-center">
         <div class="col">
-            <h3>Pay Invoice</h3>
+            <h3 class="fw-bold">
+                <i class="fas fa-credit-card text-success me-2"></i>Process Payment
+            </h3>
+            <p class="text-muted mb-0">Record and track invoice payments securely</p>
         </div>
         <div class="col text-end">
-            <a href="/invoices/ui" class="btn btn-secondary">Back to Invoices</a>
+            <a href="/invoices/ui" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i> Back to Invoices
+            </a>
         </div>
     </div>
 
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row">
+    <!-- Invoice Summary Card -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body p-4">
+            <div class="row g-4">
                 <div class="col-md-6">
-                    <p><strong>Invoice Number:</strong> {{ invoice[1] }}</p>
-                    <p><strong>Total:</strong> <span class="badge bg-primary">Rs {{ invoice[9] }}</span></p>
+                    <div class="d-flex align-items-start">
+                        <div class="bg-primary bg-opacity-10 rounded-3 p-3 me-3">
+                            <i class="fas fa-receipt fa-2x text-primary"></i>
+                        </div>
+                        <div>
+                            <h6 class="text-muted mb-1">Invoice Number</h6>
+                            <h4 class="fw-bold mb-2">{{ invoice[1] }}</h4>
+                            <p class="mb-1"><i class="fas fa-calendar-alt text-muted me-2"></i>Created: {{ invoice[5] if invoice|length > 5 else 'N/A' }}</p>
+                            <p><i class="fas fa-user text-muted me-2"></i>Customer ID: {{ invoice[2] }}</p>
+                        </div>
+                    </div>
                 </div>
-                <div class="col-md-6 text-end">
-                    {% set raw_status = invoice[10] if invoice|length > 10 and invoice[10] else 'draft' %}
-                    {% set status = raw_status|string|lower %}
-                    <p><strong>Status:</strong>
-                        {% if status == 'paid' %}
-                            <span class="badge bg-success">{{ status|title }}</span>
-                        {% elif status in ['pending', 'partial'] %}
-                            <span class="badge bg-warning">{{ status|title }}</span>
-                        {% else %}
-                            <span class="badge bg-secondary">{{ status|title }}</span>
-                        {% endif %}
-                    </p>
+                <div class="col-md-6">
+                    <div class="d-flex justify-content-md-end">
+                        <div class="text-md-end">
+                            <h6 class="text-muted mb-1">Total Amount</h6>
+                            <h2 class="fw-bold text-primary mb-2">₹ {{ "{:,.2f}".format(invoice[9]) }}</h2>
+                            {% set raw_status = invoice[10] if invoice|length > 10 and invoice[10] else 'draft' %}
+                            {% set status = raw_status|string|lower %}
+                            <p class="mb-0">
+                                <strong>Status:</strong>
+                                {% if status == 'paid' %}
+                                    <span class="badge bg-success bg-opacity-10 text-success px-3 py-2">
+                                        <i class="fas fa-check-circle me-1"></i> {{ status|title }}
+                                    </span>
+                                {% elif status in ['pending', 'partial'] %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning px-3 py-2">
+                                        <i class="fas fa-clock me-1"></i> {{ status|title }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary px-3 py-2">
+                                        <i class="fas fa-file me-1"></i> {{ status|title }}
+                                    </span>
+                                {% endif %}
+                            </p>
+                        </div>
+                    </div>
                 </div>
+            </div>
+            
+            <!-- Payment Progress Bar (if partial payment) -->
+            {% set total = invoice[9]|float %}
+            {% set paid_total = payments|selectattr(3, 'equalto', 'completed')|map(attribute=2)|sum if payments else 0 %}
+            {% set remaining = total - paid_total %}
+            {% if status in ['pending', 'partial'] and paid_total > 0 %}
+            <div class="row mt-4 pt-2">
+                <div class="col-12">
+                    <div class="bg-light rounded-3 p-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <small class="text-muted">Payment Progress</small>
+                            <small class="fw-bold">{{ "%.1f"|format((paid_total/total)*100) if total > 0 else 0 }}%</small>
+                        </div>
+                        <div class="progress" style="height: 10px;">
+                            <div class="progress-bar bg-success" style="width: {{ (paid_total/total)*100 if total > 0 else 0 }}%"></div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2">
+                            <small><i class="fas fa-check-circle text-success me-1"></i> Paid: ₹ {{ "{:,.2f}".format(paid_total) }}</small>
+                            <small><i class="fas fa-hourglass-half text-warning me-1"></i> Remaining: ₹ {{ "{:,.2f}".format(remaining) }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Add Payment Card -->
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-plus-circle text-success me-2"></i>Record New Payment
+            </h5>
+            <p class="text-muted small mb-0 mt-1">Enter payment details to update invoice status</p>
+        </div>
+        <div class="card-body p-4">
+            {% if status == 'paid' %}
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i> 
+                    This invoice has been fully paid. No further payments are required.
+                </div>
+            {% else %}
+                <form method="post" id="paymentForm">
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label for="amount" class="form-label fw-semibold">
+                                <i class="fas fa-rupee-sign me-1"></i>Payment Amount
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light">₹</span>
+                                <input type="number" step="0.01" id="amount" name="amount" 
+                                       class="form-control form-control-lg" 
+                                       placeholder="0.00" 
+                                       max="{{ remaining if remaining > 0 else total }}"
+                                       min="0.01"
+                                       required>
+                            </div>
+                            <small class="text-muted">
+                                Maximum payment: ₹ {{ "{:,.2f}".format(remaining if remaining > 0 else total) }}
+                            </small>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="payment_method" class="form-label fw-semibold">
+                                <i class="fas fa-wallet me-1"></i>Payment Method
+                            </label>
+                            <select name="payment_method" id="payment_method" class="form-select form-select-lg" required>
+                                <option value="">Select method...</option>
+                                <option value="cash">💵 Cash</option>
+                                <option value="bank_transfer">🏦 Bank Transfer</option>
+                                <option value="credit_card">💳 Credit Card</option>
+                                <option value="debit_card">💎 Debit Card</option>
+                                <option value="upi">📱 UPI / QR Code</option>
+                                <option value="cheque">📝 Cheque</option>
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="reference_no" class="form-label fw-semibold">
+                                <i class="fas fa-hashtag me-1"></i>Reference / Transaction ID
+                            </label>
+                            <input type="text" id="reference_no" name="reference_no" 
+                                   class="form-control" 
+                                   placeholder="Optional: UTR, Cheque No, Transaction ID">
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <label for="payment_date" class="form-label fw-semibold">
+                                <i class="fas fa-calendar-day me-1"></i>Payment Date
+                            </label>
+                            <input type="date" id="payment_date" name="payment_date" 
+                                   class="form-control" 
+                                   value="{{ today_date if today_date else '' }}">
+                        </div>
+                        
+                        <div class="col-12">
+                            <label for="notes" class="form-label fw-semibold">
+                                <i class="fas fa-sticky-note me-1"></i>Notes (Optional)
+                            </label>
+                            <textarea id="notes" name="notes" class="form-control" rows="2" 
+                                      placeholder="Additional payment details..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-2">
+                        <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
+                            <i class="fas fa-check-circle me-2"></i> Process Payment
+                        </button>
+                        <a href="/invoices/ui" class="btn btn-outline-secondary btn-lg ms-2">
+                            <i class="fas fa-times me-1"></i> Cancel
+                        </a>
+                    </div>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Payment History Card -->
+    {% if payments %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h5 class="mb-0 fw-bold">
+                <i class="fas fa-history me-2 text-info"></i>Payment History
+            </h5>
+            <p class="text-muted small mb-0 mt-1">All payments recorded against this invoice</p>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">#</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Reference</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payments %}
+                        <tr>
+                            <td class="ps-4">{{ loop.index }}</td>
+                            <td class="fw-bold text-success">₹ {{ "{:,.2f}".format(p[2]) }}</td>
+                            <td>
+                                {% set method = p[5] if p|length > 5 else 'unknown' %}
+                                <span class="badge bg-light text-dark">
+                                    {% if method == 'cash' %}💵 Cash
+                                    {% elif method == 'bank_transfer' %}🏦 Transfer
+                                    {% elif method == 'credit_card' %}💳 Card
+                                    {% elif method == 'debit_card' %}💎 Debit
+                                    {% elif method == 'upi' %}📱 UPI
+                                    {% elif method == 'cheque' %}📝 Cheque
+                                    {% else %}💰 {{ method|title }}
+                                    {% endif %}
+                                </span>
+                            </td>
+                            <td><small class="text-muted">{{ p[6] if p|length > 6 else '—' }}</small></td>
+                            <td>
+                                {% set payment_status = (p[3] or 'pending')|string|lower %}
+                                {% if payment_status in ['completed', 'paid', 'success'] %}
+                                    <span class="badge bg-success bg-opacity-10 text-success">
+                                        <i class="fas fa-check-circle me-1"></i> Completed
+                                    </span>
+                                {% elif payment_status in ['pending', 'initiated'] %}
+                                    <span class="badge bg-warning bg-opacity-10 text-warning">
+                                        <i class="fas fa-clock me-1"></i> Pending
+                                    </span>
+                                {% elif payment_status == 'failed' %}
+                                    <span class="badge bg-danger bg-opacity-10 text-danger">
+                                        <i class="fas fa-times-circle me-1"></i> Failed
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary bg-opacity-10 text-secondary">
+                                        {{ payment_status|title }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ p[4] }}</td>
+                            <td class="text-end pe-4">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="showReceipt({{ p[0] }})" title="View Receipt">
+                                    <i class="fas fa-print"></i>
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light">
+                        <tr>
+                            <td colspan="1" class="ps-4"><strong>Total</strong></td>
+                            <td colspan="6"><strong>₹ {{ "{:,.2f}".format(payments|sum(attribute=2)) }}</strong></td>
+                        </tr>
+                    </tfoot>
+                </table>
             </div>
         </div>
     </div>
-
-    <div class="card mb-4">
-        <div class="card-header bg-success text-white">
-            <h5 class="mb-0">Add Payment</h5>
-        </div>
-        <div class="card-body">
-            <form method="post">
-                <div class="mb-3">
-                    <label for="amount" class="form-label">Payment Amount (Rs)</label>
-                    <input type="number" step="0.01" id="amount" name="amount" class="form-control" placeholder="Enter amount" required>
-                </div>
-                <button type="submit" class="btn btn-success btn-lg">Process Payment</button>
-            </form>
-        </div>
-    </div>
-
-    {% if payments %}
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Payment History</h5>
-        </div>
-        <div class="card-body">
-            <table class="table table-striped">
-                <thead>
-                    <tr>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in payments %}
-                    <tr>
-                        <td><strong>Rs {{ p[2] }}</strong></td>
-                        <td>
-                            {% set payment_status = (p[3] or 'pending')|string|lower %}
-                            {% if payment_status in ['completed', 'paid'] %}
-                                <span class="badge bg-success">{{ payment_status|title }}</span>
-                            {% else %}
-                                <span class="badge bg-warning">{{ payment_status|title }}</span>
-                            {% endif %}
-                        </td>
-                        <td>{{ p[4] }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+    {% else %}
+    <div class="card border-0 shadow-sm">
+        <div class="card-body text-center py-5">
+            <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+            <h6 class="text-muted">No payment history yet</h6>
+            <p class="small text-muted">Record the first payment using the form above</p>
         </div>
     </div>
     {% endif %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const paymentForm = document.getElementById('paymentForm');
+    const amountInput = document.getElementById('amount');
+    const submitBtn = document.getElementById('submitBtn');
+    const remaining = {{ remaining if remaining > 0 else total }};
+    const totalAmount = {{ invoice[9] }};
+    
+    if (amountInput) {
+        // Validate amount on input
+        amountInput.addEventListener('input', function() {
+            let value = parseFloat(this.value);
+            if (value > remaining) {
+                this.setCustomValidity('Payment amount cannot exceed remaining balance (₹ ' + formatNumber(remaining) + ')');
+                this.classList.add('is-invalid');
+            } else if (value <= 0) {
+                this.setCustomValidity('Please enter a valid positive amount');
+                this.classList.add('is-invalid');
+            } else {
+                this.setCustomValidity('');
+                this.classList.remove('is-invalid');
+            }
+        });
+        
+        // Validate before submit
+        if (paymentForm) {
+            paymentForm.addEventListener('submit', function(e) {
+                let amount = parseFloat(amountInput.value);
+                if (isNaN(amount) || amount <= 0) {
+                    e.preventDefault();
+                    alert('Please enter a valid payment amount');
+                    return false;
+                }
+                if (amount > remaining) {
+                    e.preventDefault();
+                    alert('Payment amount (₹ ' + formatNumber(amount) + ') exceeds remaining balance (₹ ' + formatNumber(remaining) + ')');
+                    return false;
+                }
+                
+                // Show confirmation for large payments
+                if (amount > 10000) {
+                    if (!confirm('Large payment detected: ₹ ' + formatNumber(amount) + '\n\nPlease verify the amount before proceeding.')) {
+                        e.preventDefault();
+                        return false;
+                    }
+                }
+                
+                // Disable submit button to prevent double submission
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processing...';
+                return true;
+            });
+        }
+    }
+    
+    // Auto-set payment date to today if not set
+    const paymentDate = document.getElementById('payment_date');
+    if (paymentDate && !paymentDate.value) {
+        const today = new Date().toISOString().split('T')[0];
+        paymentDate.value = today;
+    }
+});
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+}
+
+function showReceipt(paymentId) {
+    // Receipt modal or redirect - placeholder for receipt generation
+    alert('Receipt for Payment ID: ' + paymentId + '\n\nFeature coming soon. Receipt will be downloadable as PDF.');
+}
+
+// Add visual feedback for payment method selection
+document.querySelectorAll('[name="payment_method"]').forEach(select => {
+    if (select) {
+        select.addEventListener('change', function() {
+            const referenceField = document.getElementById('reference_no');
+            if (this.value === 'cash') {
+                referenceField.placeholder = 'Optional: Cash received by, counter details';
+            } else if (this.value === 'cheque') {
+                referenceField.placeholder = 'Cheque Number, Bank Name, Date';
+            } else if (this.value === 'upi') {
+                referenceField.placeholder = 'UPI Transaction ID / VPA';
+            } else {
+                referenceField.placeholder = 'Transaction ID, Reference Number, or UTR';
+            }
+        });
+    }
+});
+</script>
+
+<style>
+    .bg-opacity-10 {
+        --bs-bg-opacity: 0.1;
+    }
+    .form-control-lg, .form-select-lg {
+        border-radius: 12px;
+    }
+    .btn-lg {
+        border-radius: 12px;
+        padding: 0.75rem 1.5rem;
+    }
+    .table td, .table th {
+        vertical-align: middle;
+    }
+</style>
 
 {% endblock %}

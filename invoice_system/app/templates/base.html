@@ -2,34 +2,440 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Invoice System</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="Professional Invoice Management System">
+    <title>{% block title %}Invoice System{% endblock %}</title>
+    
+    <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e9ecef 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        /* Modern Navbar */
+        .navbar {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            padding: 0.8rem 0;
+        }
+        
+        .navbar-brand {
+            font-weight: 700;
+            font-size: 1.5rem;
+            letter-spacing: -0.5px;
+            transition: transform 0.2s ease;
+        }
+        
+        .navbar-brand:hover {
+            transform: scale(1.02);
+            color: #ffd700 !important;
+        }
+        
+        .navbar-brand i {
+            margin-right: 8px;
+            color: #ffd700;
+        }
+        
+        .nav-btn {
+            border-radius: 10px;
+            padding: 0.4rem 1rem;
+            margin: 0 3px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            border: none;
+        }
+        
+        .nav-btn-light {
+            background: rgba(255,255,255,0.12);
+            color: #f1f1f1;
+        }
+        
+        .nav-btn-light:hover {
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-2px);
+            color: white;
+        }
+        
+        .nav-btn-outline {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #f1f1f1;
+        }
+        
+        .nav-btn-outline:hover {
+            background: rgba(255,255,255,0.15);
+            border-color: rgba(255,255,255,0.5);
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .nav-btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(220,53,69,0.3);
+        }
+        
+        .nav-btn-primary {
+            background: #0d6efd;
+            color: white;
+        }
+        
+        .nav-btn-primary:hover {
+            background: #0b5ed7;
+            transform: translateY(-2px);
+        }
+        
+        /* Main Container */
+        .main-container {
+            flex: 1;
+            padding: 2rem 1rem;
+        }
+        
+        /* Alert Styling */
+        .alert {
+            border-radius: 12px;
+            border: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            font-weight: 500;
+            padding: 1rem 1.25rem;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .alert i {
+            margin-right: 10px;
+            font-size: 1.1rem;
+        }
+        
+        /* Footer */
+        .footer {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+            padding: 1.5rem 0;
+            margin-top: auto;
+            font-size: 0.85rem;
+        }
+        
+        .footer a {
+            color: #ffd700;
+            text-decoration: none;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Card Hover Effects */
+        .card {
+            border-radius: 16px;
+            border: none;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 28px rgba(0,0,0,0.12) !important;
+        }
+        
+        /* Button Styles */
+        .btn {
+            border-radius: 10px;
+            font-weight: 500;
+            padding: 0.5rem 1.25rem;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+            border: none;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(13,110,253,0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #198754, #157347);
+            border: none;
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(25,135,84,0.3);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .navbar-brand {
+                font-size: 1.2rem;
+            }
+            
+            .nav-btn {
+                padding: 0.3rem 0.8rem;
+                font-size: 0.85rem;
+            }
+            
+            .main-container {
+                padding: 1rem;
+            }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Loading Spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.6s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* Page transition */
+        .fade-in {
+            animation: fadeIn 0.4s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-<nav class="navbar navbar-dark bg-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="{{ url_for('index') }}">Invoice System</a>
-        <div class="d-flex gap-2 flex-wrap justify-content-end">
-            <a href="{{ url_for('invoice.invoice_ui') }}" class="btn btn-light btn-sm">Invoices</a>
-            <a href="{{ url_for('customer.customer_ui') }}" class="btn btn-light btn-sm">Customers</a>
-            <a href="{{ url_for('company.company_settings') }}" class="btn btn-info btn-sm">Company</a>
-            <a href="{{ CRM_URL }}/accounts/payments" class="btn btn-danger btn-sm">Back to CRM</a>
+<!-- Modern Navigation Bar -->
+<nav class="navbar navbar-dark sticky-top">
+    <div class="container-fluid px-3 px-md-4">
+        <a class="navbar-brand" href="{{ url_for('index') }}">
+            <i class="fas fa-file-invoice-dollar"></i>
+            <span>InvoiceFlow</span>
+        </a>
+        
+        <!-- Desktop Navigation -->
+        <div class="d-none d-md-flex gap-2 flex-wrap">
+            <a href="{{ url_for('index') }}" class="btn nav-btn nav-btn-outline">
+                <i class="fas fa-home me-1"></i> Home
+            </a>
+            <a href="{{ url_for('invoice.invoice_ui') }}" class="btn nav-btn nav-btn-light">
+                <i class="fas fa-receipt me-1"></i> Invoices
+            </a>
+            <a href="{{ url_for('customer.customer_ui') }}" class="btn nav-btn nav-btn-light">
+                <i class="fas fa-users me-1"></i> Customers
+            </a>
+            <a href="{{ url_for('company.company_settings') }}" class="btn nav-btn nav-btn-light">
+                <i class="fas fa-building me-1"></i> Company
+            </a>
+            <a href="{{ url_for('invoice.dashboard') }}" class="btn nav-btn nav-btn-light">
+                <i class="fas fa-chart-line me-1"></i> Dashboard
+            </a>
+            <a href="{{ CRM_URL }}/accounts/payments" class="btn nav-btn nav-btn-danger">
+                <i class="fas fa-exchange-alt me-1"></i> CRM Payments
+            </a>
         </div>
+        
+        <!-- Mobile Navigation Toggle -->
+        <button class="btn d-md-none nav-btn nav-btn-light" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileNav" aria-controls="mobileNav">
+            <i class="fas fa-bars"></i> Menu
+        </button>
     </div>
 </nav>
 
-<div class="container mt-4">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            {% for category, message in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'danger' else category }} mb-3">{{ message }}</div>
-            {% endfor %}
-        {% endif %}
-    {% endwith %}
-    {% block content %}{% endblock %}
+<!-- Mobile Offcanvas Menu -->
+<div class="offcanvas offcanvas-start" tabindex="-1" id="mobileNav" aria-labelledby="mobileNavLabel">
+    <div class="offcanvas-header bg-dark text-white">
+        <h5 class="offcanvas-title" id="mobileNavLabel">
+            <i class="fas fa-file-invoice-dollar me-2"></i>InvoiceFlow
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+    </div>
+    <div class="offcanvas-body p-0">
+        <div class="list-group list-group-flush">
+            <a href="{{ url_for('index') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-home me-2"></i> Home
+            </a>
+            <a href="{{ url_for('invoice.invoice_ui') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-receipt me-2"></i> Invoices
+            </a>
+            <a href="{{ url_for('customer.customer_ui') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-users me-2"></i> Customers
+            </a>
+            <a href="{{ url_for('company.company_settings') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-building me-2"></i> Company
+            </a>
+            <a href="{{ url_for('invoice.dashboard') }}" class="list-group-item list-group-item-action">
+                <i class="fas fa-chart-line me-2"></i> Dashboard
+            </a>
+            <a href="{{ CRM_URL }}/accounts/payments" class="list-group-item list-group-item-action text-danger">
+                <i class="fas fa-exchange-alt me-2"></i> CRM Payments
+            </a>
+        </div>
+    </div>
 </div>
+
+<!-- Main Content Area -->
+<div class="main-container">
+    <div class="container">
+        <!-- Flash Messages with Icons -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show mb-4" role="alert">
+                        <i class="fas {% if category == 'success' %}fa-check-circle{% elif category == 'danger' or category == 'error' %}fa-exclamation-triangle{% elif category == 'warning' %}fa-exclamation-circle{% else %}fa-info-circle{% endif %}"></i>
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        <!-- Page Content Block -->
+        <div class="fade-in">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="footer">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-6 text-md-start text-center mb-2 mb-md-0">
+                <i class="fas fa-copyright me-1"></i> 2024 InvoiceFlow System 
+                <span class="mx-2">|</span> 
+                <span class="small">v2.0.0</span>
+            </div>
+            <div class="col-md-6 text-md-end text-center">
+                <a href="#" class="text-decoration-none me-3"><i class="fas fa-shield-alt me-1"></i>Security</a>
+                <a href="#" class="text-decoration-none me-3"><i class="fas fa-question-circle me-1"></i>Help</a>
+                <a href="#" class="text-decoration-none"><i class="fas fa-print me-1"></i>Support</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- Bootstrap JS Bundle with Popper -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Global JavaScript Utilities -->
+<script>
+    // Auto-dismiss alerts after 5 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            setTimeout(() => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            }, 5000);
+        });
+        
+        // Add loading state to all forms on submit
+        const forms = document.querySelectorAll('form');
+        forms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
+                if (submitBtn && !submitBtn.disabled) {
+                    submitBtn.disabled = true;
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<span class="loading-spinner me-2"></span> Processing...';
+                    
+                    // Optional: restore button if form validation fails (not perfect but helpful)
+                    setTimeout(() => {
+                        if (submitBtn.disabled) {
+                            // Will be restored if something goes wrong, but form submission will navigate
+                            // This is just a fallback
+                        }
+                    }, 3000);
+                }
+            });
+        });
+        
+        // Add active class to current navigation item
+        const currentPath = window.location.pathname;
+        const navLinks = document.querySelectorAll('.nav-btn, .list-group-item');
+        navLinks.forEach(link => {
+            const href = link.getAttribute('href');
+            if (href && href !== '#' && currentPath === href) {
+                link.classList.add('active');
+                if (link.classList.contains('nav-btn-light')) {
+                    link.style.background = 'rgba(255,255,255,0.3)';
+                }
+            }
+        });
+    });
+    
+    // Simple utility to format currency
+    window.formatCurrency = function(amount) {
+        return new Intl.NumberFormat('en-IN', {
+            style: 'currency',
+            currency: 'INR',
+            minimumFractionDigits: 2
+        }).format(amount);
+    };
+    
+    // Simple utility to format date
+    window.formatDate = function(dateString) {
+        const options = { year: 'numeric', month: 'short', day: 'numeric' };
+        return new Date(dateString).toLocaleDateString('en-IN', options);
+    };
+</script>
+
+{% block extra_js %}{% endblock %}
 
 </body>
 </html>

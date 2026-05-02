@@ -1,323 +1,427 @@
 {% extends "base.html" %}
 
 {% block content %}
-
-<div class="container mt-5">
-    <div class="card">
-        <div class="card-header bg-primary text-white">
-            <h3 class="mb-0">Create Invoice</h3>
-        </div>
-        <div class="card-body">
-            <form method="post" id="invoiceForm" novalidate>
-
-                <!-- Customer Source -->
-                <h5 class="mb-4">Customer Source</h5>
-                <hr>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="crm_lead_id" class="form-label">Select CRM Lead</label>
-                            <select id="crm_lead_id" name="crm_lead_id" class="form-control">
-                                <option value="">-- Select CRM Lead --</option>
-                                {% for lead in crm_leads %}
-                                <option value="{{ lead.id }}"
-                                    data-company="{{ lead.company_name or '' }}"
-                                    data-email="{{ lead.auth_person_email or lead.email or '' }}"
-                                    data-contact="{{ lead.auth_person_number or '' }}"
-                                    data-service="{{ lead.service or '' }}"
-                                    data-status="{{ lead.status or '' }}"
-                                    {% if selected_lead and selected_lead.id == lead.id %}selected{% endif %}>
-                                    {{ lead.company_name or 'Unnamed Lead' }} - Lead #{{ lead.id }}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text">Auto‑fills client details for the invoice.</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="customer_id" class="form-label">Or Select Existing Customer</label>
-                            <select id="customer_id" name="customer_id" class="form-control">
-                                <option value="">-- Select Existing Customer --</option>
-                                {% for c in customers %}
-                                <option value="{{ c.id }}"
-                                    data-name="{{ c.name or '' }}"
-                                    data-email="{{ c.email or '' }}"
-                                    data-gstin="{{ c.gstin or '' }}"
-                                    data-address="{{ c.address or '' }}"
-                                    data-contact="{{ c.contact or c.phone or '' }}"
-                                    data-state="{{ c.state or '' }}">
-                                    {{ c.name }}
-                                </option>
-                                {% endfor %}
-                            </select>
+<div class="container-fluid px-4 mt-4 mb-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card border-0 shadow-lg rounded-4">
+                <div class="card-header bg-gradient bg-primary text-white rounded-top-4 py-3 px-4">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-file-invoice-dollar fa-2x me-3"></i>
+                        <div>
+                            <h3 class="mb-0 fw-bold">Create GST Invoice</h3>
+                            <p class="mb-0 opacity-75 small">Generate tax-compliant invoices with automatic calculations</p>
                         </div>
                     </div>
                 </div>
-
-                <!-- Customer Details -->
-                <h5 class="mt-4 mb-4">Customer Details</h5>
-                <hr>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="customer_name" class="form-label">Customer / Company Name <span class="text-danger">*</span></label>
-                            <input type="text" id="customer_name" name="customer_name" class="form-control" required>
+                
+                <div class="card-body p-4">
+                    <form method="post" id="invoiceForm" novalidate>
+                        <!-- Customer Source Toggle -->
+                        <div class="row g-4 mb-4">
+                            <div class="col-12">
+                                <div class="d-flex gap-4 border-bottom pb-2">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="customer_source" id="sourceCRM" value="crm" checked>
+                                        <label class="form-check-label fw-semibold" for="sourceCRM">
+                                            <i class="fas fa-chart-line me-1"></i> From CRM Lead
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="customer_source" id="sourceExisting" value="existing">
+                                        <label class="form-check-label fw-semibold" for="sourceExisting">
+                                            <i class="fas fa-users me-1"></i> Existing Customer
+                                        </label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="customer_source" id="sourceNew" value="new">
+                                        <label class="form-check-label fw-semibold" for="sourceNew">
+                                            <i class="fas fa-user-plus me-1"></i> New Customer
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="customer_email" class="form-label">Email</label>
-                            <input type="email" id="customer_email" name="customer_email" class="form-control">
-                            <div class="invalid-feedback">Please enter a valid email address.</div>
+
+                        <!-- Customer Selection Panels -->
+                        <div id="crmPanel" class="customer-panel">
+                            <div class="card bg-light border-0 mb-4">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <label class="form-label fw-semibold">
+                                                <i class="fas fa-chart-line text-primary me-1"></i>Select CRM Lead
+                                            </label>
+                                            <select id="crm_lead_id" name="crm_lead_id" class="form-select form-select-lg">
+                                                <option value="">-- Search or Select CRM Lead --</option>
+                                                {% for lead in crm_leads %}
+                                                <option value="{{ lead.id }}"
+                                                    data-company="{{ lead.company_name or '' }}"
+                                                    data-email="{{ lead.auth_person_email or lead.email or '' }}"
+                                                    data-contact="{{ lead.auth_person_number or '' }}"
+                                                    data-service="{{ lead.service or '' }}"
+                                                    data-address="{{ lead.address or '' }}"
+                                                    {% if selected_lead and selected_lead.id == lead.id %}selected{% endif %}>
+                                                    {{ lead.company_name or 'Unnamed Lead' }} - Lead #{{ lead.id }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+
+                        <div id="existingPanel" class="customer-panel" style="display:none;">
+                            <div class="card bg-light border-0 mb-4">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <label class="form-label fw-semibold">
+                                                <i class="fas fa-building text-primary me-1"></i>Select Existing Customer
+                                            </label>
+                                            <select id="customer_id" name="customer_id" class="form-select form-select-lg">
+                                                <option value="">-- Search or Select Customer --</option>
+                                                {% for c in customers %}
+                                                <option value="{{ c.id }}"
+                                                    data-name="{{ c.name or '' }}"
+                                                    data-email="{{ c.email or '' }}"
+                                                    data-gstin="{{ c.gstin or '' }}"
+                                                    data-address="{{ c.address or '' }}"
+                                                    data-contact="{{ c.contact or c.phone or '' }}"
+                                                    data-state="{{ c.state or '' }}"
+                                                    data-state-code="{{ c.state_code or '' }}">
+                                                    {{ c.name }} {% if c.gstin %}(GST: {{ c.gstin[:10] }}...){% endif %}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Customer Details Form -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white border-0 pt-3 px-4">
+                                <h5 class="mb-0 fw-bold">
+                                    <i class="fas fa-user-circle text-primary me-2"></i>Customer Information
+                                </h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label for="customer_name" class="form-label fw-semibold">Customer / Company Name *</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-building"></i></span>
+                                            <input type="text" id="customer_name" name="customer_name" class="form-control" required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="customer_email" class="form-label fw-semibold">Email Address</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-envelope"></i></span>
+                                            <input type="email" id="customer_email" name="customer_email" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="customer_contact" class="form-label fw-semibold">Contact Number</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-phone"></i></span>
+                                            <input type="tel" id="customer_contact" name="customer_contact" class="form-control">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label for="customer_gstin" class="form-label fw-semibold">GSTIN (15 digits)</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-id-card"></i></span>
+                                            <input type="text" id="customer_gstin" name="customer_gstin" class="form-control" placeholder="22AAAAA0000A1Z" maxlength="15">
+                                        </div>
+                                        <div class="form-text" id="gstinValidation"></div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="customer_state" class="form-label fw-semibold">State *</label>
+                                        <input type="text" id="customer_state" name="customer_state" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <label for="customer_state_code" class="form-label fw-semibold">State Code</label>
+                                        <input type="text" id="customer_state_code" name="customer_state_code" class="form-control" maxlength="2" placeholder="27">
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="customer_address" class="form-label fw-semibold">Billing Address *</label>
+                                        <textarea id="customer_address" name="customer_address" class="form-control" rows="2" placeholder="Enter full address including 6-digit PIN code" required></textarea>
+                                        <div class="form-text">
+                                            <i class="fas fa-info-circle text-muted"></i> Must include 6-digit PIN code for GST compliance
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Invoice Details -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white border-0 pt-3 px-4">
+                                <h5 class="mb-0 fw-bold">
+                                    <i class="fas fa-receipt text-primary me-2"></i>Invoice Details
+                                </h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="row g-3">
+                                    <div class="col-md-3">
+                                        <label for="invoice_type" class="form-label fw-semibold">Invoice Type *</label>
+                                        <select id="invoice_type" name="invoice_type" class="form-select" required>
+                                            <option value="TAX">Tax Invoice (GST)</option>
+                                            <option value="PI">Proforma Invoice</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="invoice_date" class="form-label fw-semibold">Invoice Date *</label>
+                                        <input type="date" id="invoice_date" name="invoice_date" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="due_date" class="form-label fw-semibold">Due Date *</label>
+                                        <input type="date" id="due_date" name="due_date" class="form-control" required>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label for="payment_terms" class="form-label fw-semibold">Payment Terms</label>
+                                        <select id="payment_terms" name="payment_terms" class="form-select">
+                                            <option value="Due on Receipt">Due on Receipt</option>
+                                            <option value="Net 7 days">Net 7 days</option>
+                                            <option value="Net 15 days">Net 15 days</option>
+                                            <option value="Net 30 days" selected>Net 30 days</option>
+                                            <option value="Net 45 days">Net 45 days</option>
+                                            <option value="Net 60 days">Net 60 days</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="place_of_supply" class="form-label fw-semibold">Place of Supply *</label>
+                                        <input type="text" id="place_of_supply" name="place_of_supply" class="form-control" placeholder="e.g., Maharashtra (27)" required>
+                                        <div class="form-text">Determines GST type (IGST for inter-state, CGST+SGST for intra-state)</div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="po_number" class="form-label fw-semibold">PO Reference / Order No.</label>
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-light"><i class="fas fa-hashtag"></i></span>
+                                            <input type="text" id="po_number" name="po_number" class="form-control" placeholder="Customer PO number">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="hsn_code" class="form-label fw-semibold">Default SAC/HSN Code</label>
+                                        <input type="text" id="hsn_code" name="hsn_code" class="form-control" value="998314">
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="crm_service" class="form-label fw-semibold">CRM Service</label>
+                                        <div class="input-group">
+                                            <input type="text" id="crm_service" class="form-control" readonly>
+                                            <button type="button" id="addServiceAsItemBtn" class="btn btn-outline-primary" style="display:none;">
+                                                <i class="fas fa-plus"></i> Add as Item
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Service/Items Table -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white border-0 pt-3 px-4">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0 fw-bold">
+                                        <i class="fas fa-boxes text-primary me-2"></i>Invoice Items
+                                    </h5>
+                                    <button type="button" class="btn btn-sm btn-outline-primary" id="addItemBtn">
+                                        <i class="fas fa-plus-circle me-1"></i> Add Item
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-0" id="itemsTable">
+                                        <thead class="table-light">
+                                            <tr class="text-center">
+                                                <th style="width: 35%;">Description</th>
+                                                <th style="width: 12%;">SAC/HSN</th>
+                                                <th style="width: 10%;">Quantity</th>
+                                                <th style="width: 13%;">Rate (₹)</th>
+                                                <th style="width: 13%;">Discount (%)</th>
+                                                <th style="width: 15%;">Amount (₹)</th>
+                                                <th style="width: 5%;"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="items">
+                                            <tr class="item-row">
+                                                <td>
+                                                    <input type="text" name="name[]" class="form-control form-control-sm" placeholder="Item description" required>
+                                                </td>
+                                                <td>
+                                                    <input type="text" name="sac[]" class="form-control form-control-sm sac" value="998314" required>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="qty[]" class="form-control form-control-sm qty" min="1" value="1" required>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="price[]" class="form-control form-control-sm price" step="0.01" min="0" value="0" required>
+                                                </td>
+                                                <td>
+                                                    <input type="number" name="discount[]" class="form-control form-control-sm discount" step="0.01" min="0" max="100" value="0">
+                                                </td>
+                                                <td class="text-end align-middle fw-bold row-total">0.00</td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger remove-item">
+                                                        <i class="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                        <tfoot class="table-light">
+                                            <tr>
+                                                <td colspan="5" class="text-end fw-bold">Subtotal</td>
+                                                <td class="text-end fw-bold" id="subtotal">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr id="cgstRow">
+                                                <td colspan="5" class="text-end">CGST (9%)</td>
+                                                <td class="text-end" id="cgstAmount">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr id="sgstRow">
+                                                <td colspan="5" class="text-end">SGST (9%)</td>
+                                                <td class="text-end" id="sgstAmount">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr id="igstRow" style="display:none;">
+                                                <td colspan="5" class="text-end">IGST (18%)</td>
+                                                <td class="text-end" id="igstAmount">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                            <tr class="table-primary">
+                                                <td colspan="5" class="text-end fw-bold fs-5">Grand Total</td>
+                                                <td class="text-end fw-bold fs-5" id="grandTotal">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Notes -->
+                        <div class="card border-0 shadow-sm mb-4">
+                            <div class="card-header bg-white border-0 pt-3 px-4">
+                                <h5 class="mb-0 fw-bold">
+                                    <i class="fas fa-pen-alt text-primary me-2"></i>Additional Information
+                                </h5>
+                            </div>
+                            <div class="card-body p-4">
+                                <div class="row g-3">
+                                    <div class="col-12">
+                                        <label for="notes" class="form-label">Notes / Instructions</label>
+                                        <textarea id="notes" name="notes" class="form-control" rows="2" placeholder="Thank you for your business!"></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="terms" class="form-label">Terms & Conditions</label>
+                                        <textarea id="terms" name="terms" class="form-control" rows="2" placeholder="1. Payment due within 30 days&#10;2. Late payments subject to 2% monthly interest"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Form Actions -->
+                        <div class="d-flex gap-3 justify-content-end">
+                            <a href="/invoices/ui" class="btn btn-outline-secondary btn-lg px-4">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="reset" class="btn btn-outline-warning btn-lg px-4" onclick="confirmReset()">
+                                <i class="fas fa-undo me-2"></i>Reset
+                            </button>
+                            <button type="submit" class="btn btn-success btn-lg px-5" id="submitBtn">
+                                <i class="fas fa-check-circle me-2"></i>Create Invoice
+                            </button>
+                        </div>
+                    </form>
                 </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="customer_contact" class="form-label">Contact Number</label>
-                            <input type="text" id="customer_contact" name="customer_contact" class="form-control">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="customer_state" class="form-label">State <span class="text-danger">*</span></label>
-                            <input type="text" id="customer_state" name="customer_state" class="form-control" placeholder="e.g., Maharashtra" required>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="customer_gstin" class="form-label">GST Number</label>
-                            <input type="text" id="customer_gstin" name="customer_gstin" class="form-control" placeholder="15-digit GSTIN">
-                            <div class="invalid-feedback">GSTIN must be 15 characters (if provided).</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="crm_service" class="form-label">CRM Service (read‑only)</label>
-                            <input type="text" id="crm_service" class="form-control" readonly>
-                            <button type="button" id="addServiceAsItemBtn" class="btn btn-sm btn-outline-primary mt-1" style="display:none;">➕ Add service as item</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="mb-3">
-                    <label for="customer_address" class="form-label">Address</label>
-                    <textarea id="customer_address" name="customer_address" class="form-control" rows="3" placeholder="Full billing address"></textarea>
-                </div>
-
-                <!-- Invoice Details -->
-                <h5 class="mt-5 mb-4">Invoice Details</h5>
-                <hr>
-
-                <div class="row">
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="invoice_type" class="form-label">Invoice Type</label>
-                            <select id="invoice_type" name="invoice_type" class="form-control" required>
-                                <option value="PI">Proforma Invoice</option>
-                                <option value="TAX">Tax Invoice</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="invoice_date" class="form-label">Invoice Date</label>
-                            <input type="date" id="invoice_date" name="invoice_date" class="form-control" required>
-                        </div>
-                    </div>
-                    <div class="col-md-4">
-                        <div class="mb-3">
-                            <label for="due_date" class="form-label">Due Date (optional)</label>
-                            <input type="date" id="due_date" name="due_date" class="form-control">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="po_number" class="form-label">PO Reference</label>
-                            <input type="text" id="po_number" name="po_number" class="form-control" placeholder="Purchase Order Number">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="place_of_supply" class="form-label">Place of Supply</label>
-                            <input type="text" id="place_of_supply" name="place_of_supply" class="form-control" placeholder="e.g., Maharashtra (27)">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="payment_terms" class="form-label">Payment Terms</label>
-                            <input type="text" id="payment_terms" name="payment_terms" class="form-control" placeholder="e.g., Net 30 days" value="Net 30 days">
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="mb-3">
-                            <label for="hsn_code" class="form-label">Default HSN/SAC Code</label>
-                            <input type="text" id="hsn_code" name="hsn_code" class="form-control" placeholder="e.g., 998314" value="998314">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Items Table -->
-                <h5 class="mt-5 mb-4">Items</h5>
-                <div class="table-responsive">
-                    <table class="table table-bordered" id="itemsTable">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>Item Description</th>
-                                <th style="width:100px">Quantity</th>
-                                <th style="width:140px">Unit Price (₹)</th>
-                                <th style="width:120px">Total (₹)</th>
-                                <th style="width:50px"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="items">
-                            <tr class="item-row">
-                                <td><input type="text" name="name[]" placeholder="Item name" class="form-control" required></td>
-                                <td><input type="number" name="qty[]" placeholder="Qty" class="form-control qty" min="1" value="1" required></td>
-                                <td><input type="number" name="price[]" placeholder="Price" class="form-control price" step="0.01" min="0" value="0" required></td>
-                                <td><span class="row-total">0.00</span></td>
-                                <td><button type="button" class="btn btn-sm btn-danger remove-item">✖</button></td>
-                            </tr>
-                        </tbody>
-                        <tfoot class="table-light">
-                            <tr>
-                                <td colspan="3" class="text-end fw-bold">Subtotal</td>
-                                <td colspan="2"><span id="subtotal">0.00</span></td>
-                            </tr>
-                            <tr>
-                                <td colspan="3" class="text-end fw-bold">Tax (CGST+SGST / IGST)</td>
-                                <td colspan="2"><span id="taxAmount">0.00</span> <small id="taxTypeLabel"></small></td>
-                            </tr>
-                            <tr class="table-active">
-                                <td colspan="3" class="text-end fw-bold">Grand Total</td>
-                                <td colspan="2"><strong><span id="grandTotal">0.00</span></strong></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-
-                <button type="button" class="btn btn-secondary mb-4" id="addItemBtn">+ Add Another Item</button>
-
-                <div class="mt-4">
-                    <button type="submit" class="btn btn-success btn-lg">Create Invoice</button>
-                    <a href="/invoices/ui" class="btn btn-secondary btn-lg">Cancel</a>
-                </div>
-
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-    // Company state – must be passed from the backend (e.g., 'Maharashtra')
-    const COMPANY_STATE = "{{ company_state|default('Maharashtra') }}";
-
-    // Helper: format currency
+    const COMPANY_STATE = "{{ company_state|default('') }}".trim().toLowerCase();
+    
     function formatMoney(amount) {
-        return parseFloat(amount).toFixed(2);
+        return parseFloat(amount || 0).toLocaleString('en-IN', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
     }
 
-    // Clear all customer fields
-    function clearCustomerFields() {
-        document.getElementById("customer_name").value = "";
-        document.getElementById("customer_email").value = "";
-        document.getElementById("customer_contact").value = "";
-        document.getElementById("customer_gstin").value = "";
-        document.getElementById("customer_address").value = "";
-        document.getElementById("customer_state").value = "";
-        document.getElementById("crm_service").value = "";
-        document.getElementById("addServiceAsItemBtn").style.display = "none";
+    function parseMoney(value) {
+        return parseFloat(value) || 0;
     }
 
-    // Update totals for a single row
-    function updateRowTotal(row) {
-        const qty = parseFloat(row.querySelector('.qty')?.value) || 0;
-        const price = parseFloat(row.querySelector('.price')?.value) || 0;
-        const totalSpan = row.querySelector('.row-total');
-        const rowTotal = qty * price;
-        if (totalSpan) totalSpan.innerText = formatMoney(rowTotal);
-        return rowTotal;
+    function calculateItemTotal(row) {
+        const qty = parseMoney(row.querySelector(".qty").value);
+        const price = parseMoney(row.querySelector(".price").value);
+        const discount = parseMoney(row.querySelector(".discount").value);
+        let total = qty * price;
+        if (discount > 0) {
+            total = total * (1 - discount / 100);
+        }
+        row.querySelector(".row-total").innerText = formatMoney(total);
+        return total;
     }
 
-    // Recalculate all totals (subtotal, tax, grand total)
     function calculateTotals() {
         let subtotal = 0;
-        document.querySelectorAll('#items .item-row').forEach(row => {
-            subtotal += updateRowTotal(row);
+        document.querySelectorAll("#items .item-row").forEach(row => {
+            subtotal += calculateItemTotal(row);
         });
 
-        const customerState = document.getElementById("customer_state").value.trim();
-        const isInterstate = (customerState && COMPANY_STATE && customerState !== COMPANY_STATE);
-        let taxRate = 0;
-        let taxType = "";
-
-        if (isInterstate) {
-            taxRate = 0.18;   // IGST 18%
-            taxType = "IGST 18%";
-        } else {
-            taxRate = 0.18;   // CGST 9% + SGST 9% = 18% total
-            taxType = "CGST 9% + SGST 9%";
-        }
-
-        const taxAmount = subtotal * taxRate;
-        const grandTotal = subtotal + taxAmount;
+        const customerState = document.getElementById("customer_state").value.trim().toLowerCase();
+        const isInterState = COMPANY_STATE && customerState && COMPANY_STATE !== customerState;
+        
+        const cgst = isInterState ? 0 : subtotal * 0.09;
+        const sgst = isInterState ? 0 : subtotal * 0.09;
+        const igst = isInterState ? subtotal * 0.18 : 0;
+        const total = subtotal + cgst + sgst + igst;
 
         document.getElementById("subtotal").innerText = formatMoney(subtotal);
-        document.getElementById("taxAmount").innerText = formatMoney(taxAmount);
-        document.getElementById("taxTypeLabel").innerText = `(${taxType})`;
-        document.getElementById("grandTotal").innerText = formatMoney(grandTotal);
+        document.getElementById("cgstAmount").innerText = formatMoney(cgst);
+        document.getElementById("sgstAmount").innerText = formatMoney(sgst);
+        document.getElementById("igstAmount").innerText = formatMoney(igst);
+        document.getElementById("grandTotal").innerText = formatMoney(total);
+        
+        document.getElementById("cgstRow").style.display = isInterState ? "none" : "";
+        document.getElementById("sgstRow").style.display = isInterState ? "none" : "";
+        document.getElementById("igstRow").style.display = isInterState ? "" : "none";
     }
 
-    // Attach event listeners to all quantity and price inputs in the items table
-    function attachItemEvents() {
-        document.querySelectorAll('#items .item-row').forEach(row => {
-            const qtyInput = row.querySelector('.qty');
-            const priceInput = row.querySelector('.price');
-            if (qtyInput) {
-                qtyInput.removeEventListener('input', calculateTotals);
-                qtyInput.addEventListener('input', calculateTotals);
-            }
-            if (priceInput) {
-                priceInput.removeEventListener('input', calculateTotals);
-                priceInput.addEventListener('input', calculateTotals);
-            }
-        });
+    function bindItemEvents(row) {
+        row.querySelector(".qty").addEventListener("input", calculateTotals);
+        row.querySelector(".price").addEventListener("input", calculateTotals);
+        row.querySelector(".discount").addEventListener("input", calculateTotals);
     }
 
-    // Add a new empty item row
-    function addItemRow(description = "", qty = 1, price = 0) {
-        const tbody = document.getElementById("items");
-        const newRow = document.createElement("tr");
-        newRow.className = "item-row";
-        newRow.innerHTML = `
-            <td><input type="text" name="name[]" placeholder="Item name" class="form-control" value="${escapeHtml(description)}" required></td>
-            <td><input type="number" name="qty[]" placeholder="Qty" class="form-control qty" min="1" value="${qty}" required></td>
-            <td><input type="number" name="price[]" placeholder="Price" class="form-control price" step="0.01" min="0" value="${price}" required></td>
-            <td><span class="row-total">${formatMoney(qty * price)}</span></td>
-            <td><button type="button" class="btn btn-sm btn-danger remove-item">✖</button></td>
+    function addItemRow(description = "", sac = "", qty = 1, price = 0) {
+        const defaultSac = document.getElementById("hsn_code").value || "998314";
+        const row = document.createElement("tr");
+        row.className = "item-row";
+        row.innerHTML = `
+            <td><input type="text" name="name[]" class="form-control form-control-sm" placeholder="Item description" value="${escapeHtml(description)}" required></td>
+            <td><input type="text" name="sac[]" class="form-control form-control-sm sac" value="${escapeHtml(sac || defaultSac)}" required></td>
+            <td><input type="number" name="qty[]" class="form-control form-control-sm qty" min="1" value="${qty}" required></td>
+            <td><input type="number" name="price[]" class="form-control form-control-sm price" step="0.01" min="0" value="${price}" required></td>
+            <td><input type="number" name="discount[]" class="form-control form-control-sm discount" step="0.01" min="0" max="100" value="0"></td>
+            <td class="text-end align-middle fw-bold row-total">0.00</td>
+            <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="fas fa-trash-alt"></i></button></td>
         `;
-        tbody.appendChild(newRow);
-        attachItemEvents();
+        document.getElementById("items").appendChild(row);
+        bindItemEvents(row);
         calculateTotals();
     }
 
-    // Simple escape to prevent XSS
     function escapeHtml(str) {
-        if (!str) return "";
+        if (!str) return '';
         return str.replace(/[&<>]/g, function(m) {
             if (m === '&') return '&amp;';
             if (m === '<') return '&lt;';
@@ -326,162 +430,226 @@
         });
     }
 
-    // Update form fields from selected CRM lead
-    function updateLeadDetails() {
-        const select = document.getElementById("crm_lead_id");
-        const selectedOption = select.options[select.selectedIndex];
-
-        // Clear customer selection dropdown
-        document.getElementById("customer_id").value = "";
-        // Clear all customer fields
-        clearCustomerFields();
-
-        if (!selectedOption || !selectedOption.value) return;
-
-        document.getElementById("customer_name").value = selectedOption.dataset.company || "";
-        document.getElementById("customer_email").value = selectedOption.dataset.email || "";
-        document.getElementById("customer_contact").value = selectedOption.dataset.contact || "";
-        const service = selectedOption.dataset.service || "";
-        document.getElementById("crm_service").value = service;
-
-        // Show "add service as item" button if service text exists
-        const addBtn = document.getElementById("addServiceAsItemBtn");
-        if (service.trim() !== "") {
-            addBtn.style.display = "inline-block";
-            addBtn.onclick = () => {
-                addItemRow(service, 1, 0);
-                calculateTotals();
-            };
-        } else {
-            addBtn.style.display = "none";
-        }
-        calculateTotals(); // recalc tax when state might be empty
-    }
-
-    // Update form fields from selected existing customer
-    function updateCustomerDetails() {
-        const select = document.getElementById("customer_id");
-        const selectedOption = select.options[select.selectedIndex];
-
-        // Clear CRM lead selection
-        document.getElementById("crm_lead_id").value = "";
-        document.getElementById("crm_service").value = "";
-        document.getElementById("addServiceAsItemBtn").style.display = "none";
-
-        if (!selectedOption || !selectedOption.value) {
-            clearCustomerFields();
-            calculateTotals();
-            return;
-        }
-
-        document.getElementById("customer_name").value = selectedOption.dataset.name || "";
-        document.getElementById("customer_email").value = selectedOption.dataset.email || "";
-        document.getElementById("customer_contact").value = selectedOption.dataset.contact || "";
-        document.getElementById("customer_gstin").value = selectedOption.dataset.gstin || "";
-        document.getElementById("customer_address").value = selectedOption.dataset.address || "";
-        document.getElementById("customer_state").value = selectedOption.dataset.state || "";
+    function populateCustomer(data) {
+        document.getElementById("customer_name").value = data.name || data.company_name || "";
+        document.getElementById("customer_email").value = data.email || "";
+        document.getElementById("customer_contact").value = data.contact || "";
+        document.getElementById("customer_gstin").value = data.gstin || "";
+        document.getElementById("customer_address").value = data.address || "";
+        document.getElementById("customer_state").value = data.state || "";
+        document.getElementById("customer_state_code").value = data.state_code || "";
         calculateTotals();
     }
 
-    // GSTIN validation (basic)
     function validateGSTIN(gstin) {
-        if (!gstin) return true;
-        return /^[0-9A-Z]{15}$/.test(gstin);
+        const pattern = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+        return pattern.test(gstin);
     }
 
-    // Form submit validation
-    function validateForm(event) {
-        let isValid = true;
-        const name = document.getElementById("customer_name");
-        const state = document.getElementById("customer_state");
-        const email = document.getElementById("customer_email");
-        const gstin = document.getElementById("customer_gstin");
-
-        if (!name.value.trim()) {
-            name.classList.add("is-invalid");
-            isValid = false;
-        } else {
-            name.classList.remove("is-invalid");
-        }
-
-        if (!state.value.trim()) {
-            state.classList.add("is-invalid");
-            isValid = false;
-        } else {
-            state.classList.remove("is-invalid");
-        }
-
-        if (email.value && !/^\S+@\S+\.\S+$/.test(email.value)) {
-            email.classList.add("is-invalid");
-            isValid = false;
-        } else {
-            email.classList.remove("is-invalid");
-        }
-
-        if (gstin.value && !validateGSTIN(gstin.value)) {
-            gstin.classList.add("is-invalid");
-            isValid = false;
-        } else {
-            gstin.classList.remove("is-invalid");
-        }
-
-        // Check at least one item row has name, qty>0, price>=0
-        let hasValidItem = false;
-        document.querySelectorAll('#items .item-row').forEach(row => {
-            const itemName = row.querySelector('input[name="name[]"]')?.value.trim();
-            const qty = parseFloat(row.querySelector('.qty')?.value);
-            const price = parseFloat(row.querySelector('.price')?.value);
-            if (itemName && qty > 0 && price >= 0) hasValidItem = true;
-        });
-        if (!hasValidItem) {
-            alert("Please add at least one valid item with name, positive quantity, and non‑negative price.");
-            isValid = false;
-        }
-
-        if (!isValid) event.preventDefault();
-        return isValid;
-    }
-
-    // Set default invoice date to today
-    function setDefaultDate() {
-        const today = new Date().toISOString().split('T')[0];
-        const invoiceDateField = document.getElementById("invoice_date");
-        if (!invoiceDateField.value) invoiceDateField.value = today;
-    }
-
-    // Event delegation for remove buttons
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-item')) {
-            const row = e.target.closest('.item-row');
-            if (row && document.querySelectorAll('#items .item-row').length > 1) {
-                row.remove();
-                calculateTotals();
-            } else {
-                alert("You must keep at least one item row.");
-            }
-        }
-    });
-
-    // Initialisation
+    // Event Listeners
     document.addEventListener("DOMContentLoaded", function() {
-        attachItemEvents();
+        const today = new Date();
+        const todayIso = today.toISOString().split("T")[0];
+        const nextMonth = new Date();
+        nextMonth.setDate(today.getDate() + 30);
+        
+        document.getElementById("invoice_date").value = todayIso;
+        document.getElementById("due_date").value = nextMonth.toISOString().split("T")[0];
+        
+        bindItemEvents(document.querySelector(".item-row"));
         calculateTotals();
-        setDefaultDate();
 
-        const leadSelect = document.getElementById("crm_lead_id");
-        const customerSelect = document.getElementById("customer_id");
+        // Customer source toggle
+        const sourceRadios = document.querySelectorAll('input[name="customer_source"]');
+        const crmPanel = document.getElementById("crmPanel");
+        const existingPanel = document.getElementById("existingPanel");
+        
+        sourceRadios.forEach(radio => {
+            radio.addEventListener("change", function() {
+                crmPanel.style.display = this.value === "crm" ? "block" : "none";
+                existingPanel.style.display = this.value === "existing" ? "block" : "none";
+                if (this.value === "new") {
+                    document.getElementById("customer_name").value = "";
+                    document.getElementById("customer_email").value = "";
+                    document.getElementById("customer_contact").value = "";
+                    document.getElementById("customer_gstin").value = "";
+                    document.getElementById("customer_address").value = "";
+                    document.getElementById("customer_state").value = "";
+                    document.getElementById("customer_state_code").value = "";
+                }
+            });
+        });
 
-        leadSelect.addEventListener("change", updateLeadDetails);
-        customerSelect.addEventListener("change", updateCustomerDetails);
+        document.getElementById("addItemBtn").addEventListener("click", function() {
+            addItemRow();
+        });
 
-        document.getElementById("addItemBtn").addEventListener("click", () => addItemRow("", 1, 0));
+        document.getElementById("crm_lead_id").addEventListener("change", function() {
+            const option = this.options[this.selectedIndex];
+            document.getElementById("customer_id").value = "";
+            if (!option || !option.value) {
+                return;
+            }
+            fetch(`/invoices/api/lead/${option.value}`)
+                .then(response => response.json())
+                .then(lead => {
+                    const fallback = {
+                        company_name: option.dataset.company || "",
+                        email: option.dataset.email || "",
+                        contact: option.dataset.contact || "",
+                        service: option.dataset.service || "",
+                        address: option.dataset.address || "",
+                    };
+                    const leadData = Object.assign({}, fallback, lead || {});
+                    populateCustomer(leadData);
+
+                    if (leadData.customer_id) {
+                        document.getElementById("customer_id").value = String(leadData.customer_id);
+                    }
+
+                    const service = leadData.service || "";
+                    document.getElementById("crm_service").value = service;
+                    const addServiceButton = document.getElementById("addServiceAsItemBtn");
+                    addServiceButton.style.display = service ? "inline-flex" : "none";
+                    addServiceButton.onclick = function() {
+                        addItemRow(service, document.getElementById("hsn_code").value, 1, 0);
+                    };
+                    calculateTotals();
+                })
+                .catch(() => {
+                    populateCustomer({
+                        company_name: option.dataset.company || "",
+                        email: option.dataset.email || "",
+                        contact: option.dataset.contact || "",
+                        address: option.dataset.address || "",
+                    });
+                });
+        });
+
+        const crmLeadSelect = document.getElementById("crm_lead_id");
+        if (crmLeadSelect && crmLeadSelect.value) {
+            crmLeadSelect.dispatchEvent(new Event("change"));
+        }
+
+        document.getElementById("customer_id").addEventListener("change", function() {
+            document.getElementById("crm_lead_id").value = "";
+            document.getElementById("crm_service").value = "";
+            document.getElementById("addServiceAsItemBtn").style.display = "none";
+            const option = this.options[this.selectedIndex];
+            if (option && option.value) {
+                fetch(`/invoices/api/customer/${option.value}`)
+                    .then(response => response.json())
+                    .then(customer => populateCustomer(customer || {}))
+                    .catch(() => {
+                        populateCustomer({
+                            name: option.dataset.name || "",
+                            email: option.dataset.email || "",
+                            contact: option.dataset.contact || "",
+                            gstin: option.dataset.gstin || "",
+                            address: option.dataset.address || "",
+                            state: option.dataset.state || "",
+                            state_code: option.dataset.stateCode || "",
+                        });
+                    });
+            }
+            calculateTotals();
+        });
+
         document.getElementById("customer_state").addEventListener("input", calculateTotals);
-        document.getElementById("invoiceForm").addEventListener("submit", validateForm);
+        
+        document.getElementById("customer_gstin").addEventListener("input", function() {
+            let gstin = this.value.trim().toUpperCase();
+            this.value = gstin;
+            const validationSpan = document.getElementById("gstinValidation");
+            if (gstin && !validateGSTIN(gstin)) {
+                validationSpan.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Invalid GSTIN format';
+                validationSpan.className = "form-text text-warning";
+            } else if (gstin && validateGSTIN(gstin)) {
+                const stateCode = gstin.substring(0, 2);
+                validationSpan.innerHTML = '<i class="fas fa-check-circle text-success"></i> Valid GSTIN format';
+                validationSpan.className = "form-text text-success";
+            } else {
+                validationSpan.innerHTML = "";
+            }
+        });
 
-        // If a lead was pre-selected (e.g., from previous page), trigger update
-        if (leadSelect.value) updateLeadDetails();
-        else if (customerSelect.value) updateCustomerDetails();
+        document.getElementById("hsn_code").addEventListener("input", function() {
+            document.querySelectorAll("#items .sac").forEach(input => {
+                if (!input.value.trim() || input.value === "998314") {
+                    input.value = this.value;
+                }
+            });
+        });
+
+        document.addEventListener("click", function(event) {
+            const removeBtn = event.target.closest(".remove-item");
+            if (!removeBtn) return;
+            const rows = document.querySelectorAll("#items .item-row");
+            if (rows.length === 1) {
+                alert("At least one item is required");
+                return;
+            }
+            removeBtn.closest(".item-row").remove();
+            calculateTotals();
+        });
+
+        // Form validation before submit
+        document.getElementById("invoiceForm").addEventListener("submit", function(e) {
+            const itemsCount = document.querySelectorAll("#items .item-row").length;
+            if (itemsCount === 0) {
+                e.preventDefault();
+                alert("Please add at least one item to the invoice");
+                return;
+            }
+            
+            const customerName = document.getElementById("customer_name").value.trim();
+            if (!customerName) {
+                e.preventDefault();
+                alert("Please enter customer name");
+                return;
+            }
+            
+            const submitBtn = document.getElementById("submitBtn");
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Creating Invoice...';
+        });
     });
+    
+    function confirmReset() {
+        if (confirm("Are you sure you want to reset all form fields? This cannot be undone.")) {
+            document.getElementById("invoiceForm").reset();
+            const today = new Date().toISOString().split("T")[0];
+            const nextMonth = new Date();
+            nextMonth.setDate(today.getDate() + 30);
+            document.getElementById("invoice_date").value = today;
+            document.getElementById("due_date").value = nextMonth.toISOString().split("T")[0];
+            location.reload();
+        }
+    }
 </script>
 
+<style>
+    .bg-gradient {
+        background: linear-gradient(135deg, #0d6efd, #0b5ed7);
+    }
+    .rounded-4 {
+        border-radius: 1rem !important;
+    }
+    .rounded-top-4 {
+        border-top-left-radius: 1rem !important;
+        border-top-right-radius: 1rem !important;
+    }
+    .form-control:focus, .form-select:focus {
+        box-shadow: 0 0 0 0.2rem rgba(13,110,253,0.15);
+    }
+    .table th, .table td {
+        vertical-align: middle;
+    }
+    .btn-group-toggle .btn {
+        border-radius: 8px;
+    }
+    .customer-panel {
+        transition: all 0.3s ease;
+    }
+</style>
 {% endblock %}
