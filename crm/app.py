@@ -1,0 +1,146 @@
+from flask import Flask, redirect, url_for, flash, request
+from flask_login import LoginManager, login_required, current_user
+
+from database import get_db_connection, create_tables, create_default_admin
+from routes.hr import hr_bp
+from routes.auth import auth_bp, User
+from routes.admin import admin_bp
+from routes.marketing import marketing_bp
+from routes.operation import operations_bp
+from routes.accounts import accounts_bp
+from routes.employee import employee_bp
+from routes.ai_assistant import ai_bp
+import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env", override=True)
+
+
+def normalize_department(department):
+    return (department or "").strip().lower()
+
+
+def normalize_role(role):
+    return (role or "").strip().lower()
+
+create_tables()
+create_default_admin()
+
+# CREATE APP FIRST
+app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "dev-key")
+
+# LOGIN MANAGER
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = "auth.login"
+
+
+@login_manager.user_loader
+def load_user(user_id):
+
+    conn = get_db_connection()
+    cur = conn.cursor(dictionary=True)
+
+    cur.execute("""
+    SELECT u.id, u.username, u.role, u.department, u.employee_id, u.theme,
+           COALESCE(u.is_active, 1) AS is_active, e.name
+    FROM users u
+    LEFT JOIN employees e ON e.id = u.employee_id
+    WHERE u.id=%s
+    """, (user_id,))
+
+    row = cur.fetchone()
+
+    conn.close()
+
+    if row and row.get("is_active", 1):
+        normalized_role = normalize_role(row["role"])
+        normalized_department = normalize_department(row.get("department")) or normalized_role
+        return User(
+            row["id"],
+            row["username"],
+            normalized_department,
+            normalized_role,
+            row["employee_id"],
+            name=row.get("name"),
+            theme=row.get("theme", "light")
+        )
+
+    return None
+
+@app.route("/")
+def index():
+    return redirect(url_for("auth.login"))
+
+
+DEPARTMENT_DASHBOARD_ENDPOINTS = {
+    "admin": "admin.admin_dashboard",
+    "hr": "hr.dashboard",
+    "marketing": "employee.dashboard",
+    "operations": "employee.dashboard",
+    "accounts": "employee.dashboard",
+    "employee": "employee.dashboard",
+}
+
+
+@app.route("/attendance")
+@login_required
+def attendance():
+    """Central attendance entry point with department-based access."""
+    user_department = normalize_department(getattr(current_user, "department", ""))
+    user_role = normalize_role(getattr(current_user, "role", ""))
+
+    if user_department == "hr" or user_role == "hr":
+        return redirect(url_for("hr.attendance_management"))
+
+    if user_department in {"employee", "marketing", "operations", "accounts"}:
+        return redirect(url_for("employee.attendance"))
+
+    flash("Attendance access is restricted to HR and employee self-service.", "warning")
+    return redirect(url_for(DEPARTMENT_DASHBOARD_ENDPOINTS.get(user_department or user_role, "index")))
+
+
+# REGISTER BLUEPRINTS (after app created)
+app.register_blueprint(auth_bp) # auth_bp must be registered before other blueprints to ensure login routes are available for redirects
+app.register_blueprint(admin_bp) # admin_bp should be registered early to ensure admin routes are available for access control checks
+app.register_blueprint(marketing_bp) # marketing_bp can be registered after auth and admin, as it relies on authentication but not necessarily admin privileges
+app.register_blueprint(operations_bp) # operations_bp can be registered after auth and admin, as it relies on authentication but not necessarily admin privileges
+app.register_blueprint(accounts_bp) # accounts_bp can be registered after auth and admin, as it relies on authentication but not necessarily admin privileges
+app.register_blueprint(employee_bp) # employee_bp can be registered after auth and admin, as it relies on authentication but not necessarily admin privileges
+app.register_blueprint(hr_bp) # hr_bp can be registered after auth and admin, as it relies on authentication but not necessarily admin privileges
+app.register_blueprint(ai_bp) # ai_bp provides the AI chatbot API endpoint
+
+
+@app.errorhandler(500)
+def handle_500(error):
+    import traceback
+    print("500 ERROR :", error)
+    print(traceback.format_exc())
+    return "500 Error", 500
+
+
+@app.before_request
+def log_request():
+    print(f"Request: {request.method} {request.path}")
+    with open('debuglog.txt', 'a') as f:
+        f.write(f"Request: {request.method} {request.path}\n")
+
+
+@app.route("/test-app")
+def test_app():
+    return "app test ok"
+
+
+# create tables
+
+
+if __name__ == "__main__":
+    ''''Run the Flask application with configurable host, port, and debug mode from environment variables.'''
+    app.run(
+        debug=os.environ.get("FLASK_DEBUG", "false").lower() == "true",
+        host=os.environ.get("APP_HOST", "0.0.0.0"),
+        port=int(os.environ.get("APP_PORT", "5000")),
+    )

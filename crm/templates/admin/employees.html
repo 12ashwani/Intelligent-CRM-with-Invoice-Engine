@@ -1,0 +1,340 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Employees | CRM{% endblock %}
+{% block page_title %}Employees{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.create_employee') }}" class="btn-primary">
+    <i class="bi bi-person-plus-fill"></i>
+    <span>Add Employee</span>
+  </a>
+{% endblock %}
+
+{% block page_css %}
+  .page-intro {
+    margin-bottom: 22px;
+  }
+
+  .page-intro h1 {
+    font-size: 30px;
+    margin-bottom: 8px;
+  }
+
+  .page-intro p {
+    color: var(--text-secondary);
+  }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .stat-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 20px;
+  }
+
+  .stat-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+
+  .stat-value {
+    font-size: 30px;
+    font-weight: 800;
+  }
+
+  .toolbar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 18px;
+  }
+
+  .search-box {
+    flex: 1 1 320px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+  }
+
+  .search-box input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    font: inherit;
+  }
+
+  .filter-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 10px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .filter-btn.active {
+    background: var(--gradient-1);
+    color: #fff;
+    border-color: transparent;
+  }
+
+  .table-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    overflow: hidden;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .employee-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .employee-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gradient-1);
+    color: #fff;
+    font-weight: 700;
+  }
+
+  .employee-meta strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .employee-meta span {
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .tag,
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .tag {
+    background: var(--card-soft);
+    color: var(--text-secondary);
+  }
+
+  .status-badge.yes {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--accent-success);
+  }
+
+  .status-badge.no {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--accent-warning);
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .actions form {
+    display: inline;
+  }
+
+  .action-link,
+  .action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    background: var(--card-soft);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .action-btn.danger {
+    color: var(--accent-danger);
+    border-color: rgba(239, 68, 68, 0.25);
+    background: rgba(239, 68, 68, 0.08);
+  }
+{% endblock %}
+
+{% block content %}
+  {% set ns = namespace(with_login=0, without_login=0) %}
+  {% for emp in employees %}
+    {% if emp[7] == 'Yes' %}
+      {% set ns.with_login = ns.with_login + 1 %}
+    {% else %}
+      {% set ns.without_login = ns.without_login + 1 %}
+    {% endif %}
+  {% endfor %}
+
+  <div class="page-intro">
+    <h1>Employee Directory</h1>
+    <p>All employee actions here are real and routed to working admin pages only.</p>
+  </div>
+
+  <section class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Total Employees</div>
+      <div class="stat-value">{{ employees | length }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Login Enabled</div>
+      <div class="stat-value">{{ ns.with_login }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">No Login</div>
+      <div class="stat-value">{{ ns.without_login }}</div>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <div class="search-box">
+      <i class="bi bi-search"></i>
+      <input type="text" id="searchInput" placeholder="Search by name, email, department, role, or username">
+    </div>
+    <div class="filter-group">
+      <button type="button" class="filter-btn active" data-dept="all">All</button>
+      <button type="button" class="filter-btn" data-dept="marketing">Marketing</button>
+      <button type="button" class="filter-btn" data-dept="operations">Operations</button>
+      <button type="button" class="filter-btn" data-dept="admin">Admin</button>
+      <button type="button" class="filter-btn" data-dept="accounts">Accounts</button>
+      <button type="button" class="filter-btn" data-dept="hr">HR</button>
+    </div>
+  </div>
+
+  <div class="table-card">
+    <div class="table-wrap">
+      <table id="employeeTable">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Phone</th>
+            <th>Department</th>
+            <th>Role</th>
+            <th>Username</th>
+            <th>Login</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="employeeTableBody">
+          {% for emp in employees %}
+            <tr data-search="{{ ((emp[1] or '') ~ ' ' ~ (emp[2] or '') ~ ' ' ~ (emp[4] or '') ~ ' ' ~ (emp[5] or '') ~ ' ' ~ (emp[6] or '')) | lower }}" data-department="{{ emp[4] | lower if emp[4] else '' }}">
+              <td>
+                <div class="employee-cell">
+                  <div class="employee-avatar">{{ emp[1][0].upper() if emp[1] else '?' }}</div>
+                  <div class="employee-meta">
+                    <strong>{{ emp[1] }}</strong>
+                    <span>{{ emp[2] if emp[2] else 'No email' }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>{{ emp[3] if emp[3] else '—' }}</td>
+              <td><span class="tag">{{ emp[4] if emp[4] else 'N/A' }}</span></td>
+              <td><span class="tag">{{ emp[5] if emp[5] else '—' }}</span></td>
+              <td>{{ emp[6] if emp[6] else '—' }}</td>
+              <td>
+                <span class="status-badge {{ 'yes' if emp[7] == 'Yes' else 'no' }}">{{ emp[7] }}</span>
+              </td>
+              <td>
+                <div class="actions">
+                  <a href="{{ url_for('admin.edit_employee', employee_id=emp[0]) }}" class="action-link">
+                    <i class="bi bi-pencil-square"></i>
+                    <span>Edit</span>
+                  </a>
+                  <a href="{{ url_for('admin.manage_employee_credentials', employee_id=emp[0]) }}" class="action-link">
+                    <i class="bi bi-key-fill"></i>
+                    <span>Credentials</span>
+                  </a>
+                  <form method="POST" action="{{ url_for('admin.delete_employee', employee_id=emp[0]) }}" onsubmit="return confirm('Delete {{ emp[1] }}?');">
+                    <button type="submit" class="action-btn danger">
+                      <i class="bi bi-trash"></i>
+                      <span>Delete</span>
+                    </button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="muted">No employees found.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
+
+{% block page_scripts %}
+  <script>
+    (function() {
+      const searchInput = document.getElementById('searchInput');
+      const filterButtons = Array.from(document.querySelectorAll('.filter-btn'));
+      const rows = Array.from(document.querySelectorAll('#employeeTableBody tr[data-search]'));
+      let activeDept = 'all';
+
+      function applyFilters() {
+        const query = (searchInput.value || '').trim().toLowerCase();
+        rows.forEach(function(row) {
+          const matchesText = !query || row.dataset.search.includes(query);
+          const matchesDept = activeDept === 'all' || row.dataset.department === activeDept;
+          row.style.display = matchesText && matchesDept ? '' : 'none';
+        });
+      }
+
+      searchInput.addEventListener('input', applyFilters);
+
+      filterButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+          activeDept = button.dataset.dept;
+          filterButtons.forEach(function(btn) {
+            btn.classList.toggle('active', btn === button);
+          });
+          applyFilters();
+        });
+      });
+    })();
+  </script>
+{% endblock %}

@@ -1,0 +1,379 @@
+<style>
+  .crm-ai-launcher {
+    position: fixed;
+    right: 22px;
+    bottom: 22px;
+    z-index: 3000;
+    width: 60px;
+    height: 60px;
+    border: 0;
+    border-radius: 50%;
+    background: #14532d;
+    color: #fff;
+    box-shadow: 0 16px 36px rgba(20, 83, 45, 0.34);
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .crm-ai-popup {
+    position: fixed;
+    right: 22px;
+    bottom: 92px;
+    z-index: 2999;
+    width: min(410px, calc(100vw - 28px));
+    height: min(640px, calc(100vh - 112px));
+    display: grid;
+    grid-template-rows: auto auto 1fr auto;
+    background: #fff;
+    border: 1px solid #d8e2ef;
+    border-radius: 8px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.25);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(16px) scale(0.98);
+    pointer-events: none;
+    transition: opacity 0.16s ease, transform 0.16s ease;
+  }
+
+  .crm-ai-popup.open {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  .crm-ai-head {
+    padding: 13px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    background: #14532d;
+    color: #fff;
+  }
+
+  .crm-ai-head strong,
+  .crm-ai-head span {
+    display: block;
+  }
+
+  .crm-ai-head strong {
+    font-size: 15px;
+  }
+
+  .crm-ai-head span {
+    color: #dcfce7;
+    font-size: 12px;
+  }
+
+  .crm-ai-close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  .crm-ai-tools {
+    padding: 10px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    border-bottom: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+
+  .crm-ai-chip {
+    flex: 0 0 auto;
+    border: 1px solid #d8e2ef;
+    border-radius: 999px;
+    background: #fff;
+    color: #172033;
+    padding: 7px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .crm-ai-window {
+    min-height: 0;
+    padding: 13px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    background: #f8fafc;
+  }
+
+  .crm-ai-message {
+    max-width: 88%;
+  }
+
+  .crm-ai-message.user {
+    align-self: flex-end;
+  }
+
+  .crm-ai-bubble {
+    padding: 10px 12px;
+    border: 1px solid #d8e2ef;
+    border-radius: 8px;
+    background: #fff;
+    color: #172033;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+
+  .crm-ai-message.user .crm-ai-bubble {
+    border-color: #14532d;
+    background: #14532d;
+    color: #fff;
+  }
+
+  .crm-ai-meta {
+    margin-top: 4px;
+    color: #64748b;
+    font-size: 11px;
+  }
+
+  .crm-ai-message.user .crm-ai-meta {
+    text-align: right;
+  }
+
+  .crm-ai-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 42px;
+    gap: 8px;
+    padding: 11px;
+    border-top: 1px solid #e2e8f0;
+    background: #fff;
+  }
+
+  .crm-ai-form input {
+    min-width: 0;
+    height: 42px;
+    border: 1px solid #d8e2ef;
+    border-radius: 8px;
+    padding: 0 11px;
+    outline: none;
+  }
+
+  .crm-ai-send {
+    width: 42px;
+    height: 42px;
+    border: 0;
+    border-radius: 8px;
+    background: #14532d;
+    color: #fff;
+    cursor: pointer;
+  }
+
+  @media (max-width: 520px) {
+    .crm-ai-launcher {
+      right: 16px;
+      bottom: 16px;
+    }
+
+    .crm-ai-popup {
+      right: 14px;
+      bottom: 86px;
+    }
+  }
+</style>
+
+<section class="crm-ai-popup" id="crmAiPopup" aria-hidden="true" aria-label="CRM AI assistant">
+  <div class="crm-ai-head">
+    <div>
+      <strong>CRM AI Assistant</strong>
+      <span>Answers from crm_tools.py only</span>
+    </div>
+    <button class="crm-ai-close" id="crmAiClose" type="button" aria-label="Close AI bot">x</button>
+  </div>
+
+  <div class="crm-ai-tools">
+    <button class="crm-ai-chip" type="button" data-crm-question="today leads">Today leads</button>
+    <button class="crm-ai-chip" type="button" data-crm-question="all leads">All leads</button>
+    <button class="crm-ai-chip" type="button" data-crm-question="pending payments">Pending payments</button>
+    <button class="crm-ai-chip" type="button" data-crm-question="status report">Status report</button>
+    <button class="crm-ai-chip" type="button" data-crm-question="search customer ">Search customer</button>
+    <button class="crm-ai-chip" type="button" data-crm-question="lead details ">Lead details</button>
+    <button class="crm-ai-chip" type="button" data-crm-question="payment history ">Payment history</button>
+    <button class="crm-ai-chip" type="button" data-crm-question="documents required for gst registration">GST docs</button>
+  </div>
+
+  <div class="crm-ai-window" id="crmAiWindow">
+    <div class="crm-ai-message bot">
+      <div class="crm-ai-bubble">Ask CRM questions only: today leads, pending payments, status report, lead details company name, search customer mobile, payment history company name, or documents required for GST registration.</div>
+      <div class="crm-ai-meta">CRM tools ready</div>
+    </div>
+  </div>
+
+  <form class="crm-ai-form" id="crmAiForm">
+    <input id="crmAiInput" type="text" placeholder="Ask CRM question..." autocomplete="off" required>
+    <button class="crm-ai-send" id="crmAiSend" type="submit" aria-label="Send">></button>
+  </form>
+</section>
+
+<button class="crm-ai-launcher" id="crmAiLauncher" type="button" aria-label="Open CRM AI bot">AI</button>
+
+<script>
+  (function() {
+    const popup = document.getElementById('crmAiPopup');
+    const launcher = document.getElementById('crmAiLauncher');
+    const closeBtn = document.getElementById('crmAiClose');
+    const form = document.getElementById('crmAiForm');
+    const input = document.getElementById('crmAiInput');
+    const sendBtn = document.getElementById('crmAiSend');
+    const windowEl = document.getElementById('crmAiWindow');
+
+    if (!popup || !launcher || !form || !input || !windowEl) return;
+
+    function openBot() {
+      popup.classList.add('open');
+      popup.setAttribute('aria-hidden', 'false');
+      input.focus();
+    }
+
+    function closeBot() {
+      popup.classList.remove('open');
+      popup.setAttribute('aria-hidden', 'true');
+    }
+
+    function text(value) {
+      return String(value == null ? '' : value);
+    }
+
+    function label(key) {
+      return key.replace(/_/g, ' ');
+    }
+
+    function formatResponse(response) {
+      if (Array.isArray(response)) {
+        if (!response.length) return 'No matching CRM data found.';
+        return response.map(function(record, index) {
+          const title = record.company_name || record.status || ('Record ' + (index + 1));
+          const fields = [
+            'id', 'date', 'company_name', 'service', 'status', 'auth_person_name',
+            'auth_person_number', 'email', 'marketing_executive_name',
+            'operation_executive_name', 'account_executive_name', 'file_status',
+            'govt_payment_status', 'professional_payment_status', 'total_amount',
+            'payment_date', 'account_remark'
+          ];
+          const lines = fields
+            .filter(function(field) {
+              return record[field] !== undefined && record[field] !== null && record[field] !== '';
+            })
+            .map(function(field) {
+              return label(field) + ': ' + record[field];
+            });
+          return title + '\n' + lines.join('\n');
+        }).join('\n\n');
+      }
+
+      if (response && typeof response === 'object') {
+        if (response.by_status) {
+          return 'Total leads: ' + response.total + '\n' + response.by_status.map(function(row) {
+            return row.status + ': ' + row.total;
+          }).join('\n');
+        }
+
+        return Object.keys(response).map(function(key) {
+          const value = response[key];
+          if (Array.isArray(value)) {
+            return label(key) + ':\n' + value.map(function(item, index) {
+              return (index + 1) + '. ' + item;
+            }).join('\n');
+          }
+          return label(key) + ': ' + value;
+        }).join('\n\n');
+      }
+
+      return text(response);
+    }
+
+    function appendMessage(kind, message, meta) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'crm-ai-message ' + kind;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'crm-ai-bubble';
+      bubble.textContent = text(message);
+
+      const metaLine = document.createElement('div');
+      metaLine.className = 'crm-ai-meta';
+      metaLine.textContent = meta || (kind === 'user' ? 'You' : 'CRM tool');
+
+      wrapper.appendChild(bubble);
+      wrapper.appendChild(metaLine);
+      windowEl.appendChild(wrapper);
+      windowEl.scrollTop = windowEl.scrollHeight;
+      return wrapper;
+    }
+
+    function setRunning(running) {
+      sendBtn.disabled = running;
+      sendBtn.textContent = running ? '...' : '>';
+    }
+
+    function ask(question) {
+      question = text(question).trim();
+      if (!question) return;
+      openBot();
+      appendMessage('user', question, 'You');
+      const typing = appendMessage('bot', 'Running CRM tool...', 'Please wait');
+      setRunning(true);
+
+      fetch('{{ url_for("ai.ai_query") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message: question})
+      })
+      .then(function(response) {
+        return response.json().then(function(data) {
+          if (!response.ok) throw new Error(data.error || 'Request failed');
+          return data;
+        });
+      })
+      .then(function(data) {
+        typing.remove();
+        const source = data.source === 'crm_help'
+          ? 'CRM tool help'
+          : (data.action ? data.action.replace(/_/g, ' ') : (data.source || 'crm tool'));
+        appendMessage('bot', formatResponse(data.response), 'Source: ' + source);
+      })
+      .catch(function(error) {
+        typing.remove();
+        appendMessage('bot', 'Error: ' + error.message, 'CRM error');
+      })
+      .finally(function() {
+        setRunning(false);
+        input.focus();
+      });
+    }
+
+    launcher.addEventListener('click', function() {
+      if (popup.classList.contains('open')) closeBot();
+      else openBot();
+    });
+
+    closeBtn.addEventListener('click', closeBot);
+
+    form.addEventListener('submit', function(event) {
+      event.preventDefault();
+      const question = input.value;
+      input.value = '';
+      ask(question);
+    });
+
+    document.querySelectorAll('[data-crm-question]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        const question = button.getAttribute('data-crm-question');
+        input.value = question;
+        input.focus();
+        if (!question.endsWith(' ')) ask(question);
+      });
+    });
+  })();
+</script>

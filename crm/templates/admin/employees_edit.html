@@ -1,0 +1,135 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Edit Employee | CRM{% endblock %}
+{% block page_title %}Edit Employee{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.employees_list') }}" class="btn-secondary">
+    <i class="bi bi-arrow-left"></i>
+    <span>Back to Employees</span>
+  </a>
+{% endblock %}
+
+{% block page_css %}
+  .page-intro {
+    margin-bottom: 20px;
+  }
+
+  .page-intro h1 {
+    font-size: 30px;
+    margin-bottom: 8px;
+  }
+
+  .page-intro p {
+    color: var(--text-secondary);
+  }
+
+  .form-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 26px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .full-width {
+    grid-column: 1 / -1;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card-soft);
+    color: var(--text-primary);
+    font: inherit;
+  }
+
+  .form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 900px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="page-intro">
+    <h1>Edit {{ employee[1] }}</h1>
+    <p>Update employee profile details and login username from the same admin layout.</p>
+  </div>
+
+  <div class="form-card">
+    <form method="POST" action="{{ url_for('admin.edit_employee', employee_id=employee[0]) }}">
+      <div class="form-grid">
+        <div class="form-group full-width">
+          <label>Full Name</label>
+          <input type="text" name="name" required value="{{ employee[1] or '' }}">
+        </div>
+
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" name="email" value="{{ employee[2] or '' }}">
+        </div>
+
+        <div class="form-group">
+          <label>Phone</label>
+          <input type="text" name="phone" value="{{ employee[3] or '' }}">
+        </div>
+
+        <div class="form-group">
+          <label>Department</label>
+          <select name="department" required>
+            <option value="Marketing" {% if employee[4] == 'Marketing' %}selected{% endif %}>Marketing</option>
+            <option value="Operations" {% if employee[4] == 'Operations' %}selected{% endif %}>Operations</option>
+            <option value="Admin" {% if employee[4] == 'Admin' %}selected{% endif %}>Admin</option>
+            <option value="Accounts" {% if employee[4] == 'Accounts' %}selected{% endif %}>Accounts</option>
+            <option value="HR" {% if employee[4] == 'HR' %}selected{% endif %}>HR</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Role</label>
+          <input type="text" name="role" value="{{ employee[5] or '' }}">
+        </div>
+
+        <div class="form-group full-width">
+          <label>Username</label>
+          <input type="text" name="username" value="{{ employee[6] or '' }}">
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <a href="{{ url_for('admin.employees_list') }}" class="btn-secondary">
+          <i class="bi bi-x-lg"></i>
+          <span>Cancel</span>
+        </a>
+        <button type="submit" class="btn-primary">
+          <i class="bi bi-check-lg"></i>
+          <span>Save Changes</span>
+        </button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

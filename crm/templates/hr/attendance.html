@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Attendance Management | HR Portal</title>
+    <!-- Bootstrap 5 + Icons + Google Fonts -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+    <!-- AOS Library for subtle scroll animations -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+        body {
+            background: #f4f7fc;
+        }
+        /* Glass morphism cards & modern effects */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.96);
+            backdrop-filter: blur(2px);
+            border-radius: 32px;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0,0,0,0.02);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            border: 1px solid rgba(255,255,255,0.5);
+        }
+        .glass-card:hover {
+            box-shadow: 0 25px 40px -16px rgba(0, 0, 0, 0.12);
+        }
+        .gradient-header {
+            background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%);
+            border-bottom: 1px solid #eef2f6;
+        }
+        .btn-primary-glow {
+            background: #0a58ca;
+            border: none;
+            box-shadow: 0 8px 18px -8px rgba(13,110,253,0.4);
+            transition: all 0.25s;
+        }
+        .btn-primary-glow:hover {
+            background: #0045b5;
+            transform: translateY(-2px);
+            box-shadow: 0 14px 24px -10px rgba(13,110,253,0.5);
+        }
+        .btn-outline-modern {
+            border-radius: 40px;
+            border: 1px solid #cddfe7;
+            background: white;
+            padding: 8px 20px;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        .btn-outline-modern:hover {
+            background: #f0f5fa;
+            border-color: #8fbbda;
+            transform: translateX(-2px);
+        }
+        .stat-badge {
+            background: #eef2ff;
+            border-radius: 100px;
+            padding: 8px 18px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #1f3a6b;
+        }
+        .attendance-table th {
+            background: #f9fbfe;
+            font-weight: 600;
+            font-size: 0.8rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: #2c4c6e;
+            padding: 18px 12px;
+            border-bottom-width: 1px;
+            border-color: #e5edf2;
+        }
+        .attendance-table td {
+            padding: 16px 12px;
+            vertical-align: middle;
+            border-color: #edf2f7;
+        }
+        .avatar-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(145deg, #eef3fc, #e0e9f3);
+            border-radius: 40px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: #2c6280;
+            font-weight: 600;
+            margin-right: 12px;
+        }
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 15px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            width: fit-content;
+            backdrop-filter: blur(2px);
+        }
+        .status-present { background: #e0f7ea; color: #1e7b48; border-left: 3px solid #2b8c4a; }
+        .status-half { background: #fff1df; color: #b45b0b; border-left: 3px solid #f4a100; }
+        .status-absent { background: #ffe9e9; color: #b91c1c; border-left: 3px solid #e53e3e; }
+        .form-modern {
+            border-radius: 20px;
+            border: 1px solid #e2edf2;
+            transition: 0.2s;
+            background: white;
+        }
+        .form-modern:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59,130,246,0.1);
+        }
+        .section-title-icon {
+            background: linear-gradient(135deg, #ffffff, #f3f9ff);
+            padding: 10px 20px;
+            border-radius: 40px;
+        }
+        .blob-bg {
+            position: relative;
+            overflow: hidden;
+        }
+        .time-badge {
+            background: #f1f5f9;
+            font-family: monospace;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+        }
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(12px);}
+            to { opacity: 1; transform: translateY(0);}
+        }
+        .animate-card {
+            animation: fadeSlideUp 0.4s ease-out forwards;
+        }
+        hr.gradient-hr {
+            height: 3px;
+            background: linear-gradient(90deg, #3b82f6, #a0c4ff, #e2eafc);
+            width: 70px;
+            border-radius: 3px;
+            opacity: 0.7;
+        }
+        .bg-soft-warm {
+            background: #fefdf8;
+        }
+    </style>
+</head>
+<body style="background: #f5f9fe;">
+
+{% block content %}
+<div class="container-fluid px-4 py-5" style="max-width: 1600px; margin: 0 auto;">
+
+    <!-- enhanced header with micro stats and visual gradient -->
+    <div class="row mb-5 align-items-end" data-aos="fade-up">
+        <div class="col-12">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+                <div>
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="avatar-icon" style="width: 56px; height: 56px; background: linear-gradient(145deg, #e9f0fe, #dce7fa); font-size: 1.8rem;">
+                            <i class="bi bi-fingerprint"></i>
+                        </div>
+                        <div>
+                            <h1 class="display-6 fw-bold mb-1" style="background: linear-gradient(135deg, #1a2c3e, #1f4e79); background-clip: text; -webkit-background-clip: text; color: transparent;">Attendance Hub</h1>
+                            <p class="text-muted fs-6 mb-0 d-flex align-items-center gap-2"><i class="bi bi-calendar-heart"></i> Real-time tracking · Smart insights</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex gap-3">
+                    <div class="stat-badge"><i class="bi bi-people-fill me-1"></i> Total Staff: {{ employees|length }}</div>
+                    <a href="{{ url_for('hr.dashboard') }}" class="btn btn-outline-modern shadow-sm">
+                        <i class="bi bi-layout-text-sidebar-reverse me-2"></i> HR Panel
+                    </a>
+                </div>
+            </div>
+            <hr class="gradient-hr mt-3">
+        </div>
+    </div>
+
+    <!-- Enhanced Mark Attendance Card with glass style & animated -->
+    <div class="card glass-card border-0 mb-5 overflow-hidden" data-aos="fade-up" data-aos-delay="100">
+        <div class="card-header gradient-header border-0 py-4 px-5">
+            <div class="d-flex align-items-center justify-content-between flex-wrap">
+                <div>
+                    <h5 class="fw-bold fs-5 mb-0 d-flex align-items-center gap-2">
+                        <span class="badge bg-primary rounded-pill p-2"><i class="bi bi-pen-check"></i></span>
+                        Mark Daily Attendance
+                    </h5>
+                    <p class="text-muted small mt-1 mb-0">Quick check-in/out · Bulk update today's log</p>
+                </div>
+                <div class="mt-2 mt-sm-0">
+                    <span class="badge bg-light text-dark px-3 py-2 rounded-pill"><i class="bi bi-clock-history me-1"></i> Today, {{ today.strftime('%d %b %Y') }}</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body p-5">
+            <form method="POST" action="{{ url_for('hr.mark_employee_attendance') }}">
+                <div class="row mb-5">
+                    <div class="col-md-5 col-lg-4">
+                        <label class="form-label fw-semibold d-flex align-items-center gap-2"><i class="bi bi-calendar3"></i> Attendance Date</label>
+                        <input type="date" name="date" class="form-control form-modern py-2" 
+                               value="{{ today.strftime('%Y-%m-%d') }}" required style="border-radius: 18px;">
+                    </div>
+                    <div class="col-md-7 col-lg-8 d-flex justify-content-md-end align-items-md-end">
+                        <div class="alert alert-light border-0 bg-soft-warm rounded-4 shadow-sm p-3 w-100">
+                            <i class="bi bi-info-circle-fill text-primary me-2"></i>
+                            <span class="small">Leave check-in/out empty for <strong>Absent/Half Day</strong> or fill times for Present. Optional remarks field supports notes.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table attendance-table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th style="width: 24%">EMPLOYEE</th>
+                                <th style="width: 14%">STATUS</th>
+                                <th style="width: 14%">CHECK IN</th>
+                                <th style="width: 14%">CHECK OUT</th>
+                                <th style="width: 34%">REMARKS</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for employee in employees %}
+                            <tr style="transition: 0.1s;">
+                                <td>
+                                    <div class="d-flex align-items-center gap-3">
+                                        <div class="avatar-icon">
+                                            {{ employee.name[0]|upper }}{{ employee.name.split()[-1][0]|upper if employee.name.split()|length > 1 else employee.name[1]|default('E')|upper }}
+                                        </div>
+                                        <div>
+                                            <div class="fw-bold text-dark">{{ employee.name }}</div>
+                                            <div class="small text-secondary-emphasis">{{ employee.department }} • {{ employee.role }}</div>
+                                            <input type="hidden" name="employee_id[]" value="{{ employee.id }}">
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <select name="status[]" class="form-select form-modern py-2" style="border-radius: 30px; background-color: #fff;">
+                                        <option value="present">✅ Present</option>
+                                        <option value="half_day">🌓 Half Day</option>
+                                        <option value="absent">❌ Absent</option>
+                                    </select>
+                                </td>
+                                <td><input type="time" name="check_in_time[]" class="form-control form-modern" placeholder="--:--" style="border-radius: 30px;"></td>
+                                <td><input type="time" name="check_out_time[]" class="form-control form-modern" placeholder="--:--" style="border-radius: 30px;"></td>
+                                <td><input type="text" name="remarks[]" class="form-control form-modern" placeholder="e.g. late approval, business trip ..." style="border-radius: 30px;"></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="mt-5 d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary-glow btn-lg px-5 rounded-pill fw-semibold">
+                        <i class="bi bi-cloud-upload me-2"></i> Save Attendance Records
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Today's Attendance overview with improved graphics and statistical mini cards -->
+    <div class="row g-4 mb-4" data-aos="fade-up" data-aos-delay="200">
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="background: white;">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="bg-success bg-opacity-10 rounded-3 p-3"><i class="bi bi-check2-circle fs-2 text-success"></i></div>
+                    <div>
+                        <h6 class="text-secondary mb-0">Present Today</h6>
+                        <h3 class="fw-bold mb-0">
+                            {% set present_count = today_records|selectattr('status', 'equalto', 'present')|list|length %}
+                            {{ present_count }}
+                        </h3>
+                        <small class="text-muted">out of {{ employees|length }}</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="background: white;">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="bg-warning bg-opacity-10 rounded-3 p-3"><i class="bi bi-sun-half fs-2 text-warning"></i></div>
+                    <div>
+                        <h6 class="text-secondary mb-0">Half Day</h6>
+                        <h3 class="fw-bold mb-0">
+                            {% set halfday_count = today_records|selectattr('status', 'equalto', 'half_day')|list|length %}
+                            {{ halfday_count }}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="background: white;">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="bg-danger bg-opacity-10 rounded-3 p-3"><i class="bi bi-person-x fs-2 text-danger"></i></div>
+                    <div>
+                        <h6 class="text-secondary mb-0">Absent</h6>
+                        <h3 class="fw-bold mb-0">
+                            {% set absent_count = today_records|selectattr('status', 'equalto', 'absent')|list|length %}
+                            {{ absent_count }}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 col-lg-3">
+            <div class="card border-0 shadow-sm rounded-4 h-100" style="background: white;">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <div class="bg-info bg-opacity-10 rounded-3 p-3"><i class="bi bi-hourglass-split fs-2 text-info"></i></div>
+                    <div>
+                        <h6 class="text-secondary mb-0">Attendance Rate</h6>
+                        <h3 class="fw-bold mb-0">
+                            {% if employees|length > 0 %}
+                                {{ ((present_count + halfday_count) / employees|length * 100)|round|int }}%
+                            {% else %}0{% endif %}
+                        </h3>
+                        <small class="text-muted">present + half day</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Today's detailed records table with enhanced visual rows -->
+    <div class="card glass-card border-0 overflow-hidden" data-aos="fade-up" data-aos-delay="250">
+        <div class="card-header gradient-header border-0 py-4 px-5 d-flex justify-content-between align-items-center flex-wrap">
+            <div>
+                <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                    <i class="bi bi-table fs-5 text-primary"></i> Today's Attendance Log
+                </h5>
+                <p class="text-muted small mb-0 mt-1">Detailed view with working hours & validation badges</p>
+            </div>
+            <div>
+                <button onclick="exportAttendanceCSV()" class="btn btn-outline-primary rounded-pill px-3 py-2 fw-semibold me-3">
+                    <i class="bi bi-file-earmark-spreadsheet me-1"></i> Export to Excel
+                </button>
+                <span class="badge rounded-pill bg-primary px-3 py-2 fs-6 fw-normal shadow-sm"><i class="bi bi-files me-1"></i> {{ today_records|length }} entries</span>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table id="attendanceTable" class="table attendance-table mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">EMPLOYEE</th>
+                            <th>DATE</th>
+                            <th>STATUS</th>
+                            <th>CHECK IN</th>
+                            <th>CHECK OUT</th>
+                            <th>⏱️ WORKING HOURS</th>
+                            <th>NOTES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in today_records %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="avatar-icon" style="width: 32px; height: 32px; font-size: 0.75rem;">{{ record.employee_name[0]|upper }}</div>
+                                    <span class="fw-semibold">{{ record.employee_name }}</span>
+                                </div>
+                            </td>
+                            <td><span class="time-badge"><i class="bi bi-calendar-day me-1"></i> {{ record.date }}</span></td>
+                            <td>
+                                {% if record.status == 'present' %}
+                                <div class="status-chip status-present"><i class="bi bi-check-circle-fill"></i> Present</div>
+                                {% elif record.status == 'half_day' %}
+                                <div class="status-chip status-half"><i class="bi bi-brightness-alt-high"></i> Half Day</div>
+                                {% elif record.status == 'absent' %}
+                                <div class="status-chip status-absent"><i class="bi bi-x-circle-fill"></i> Absent</div>
+                                {% else %}
+                                <div class="status-chip bg-secondary bg-opacity-10">{{ record.status|title }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if record.check_in_time %}
+                                <span class="time-badge"><i class="bi bi-clock-fill me-1 text-primary"></i> {{ record.check_in_time }}</span>
+                                {% else %}<span class="text-muted">—</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if record.check_out_time %}
+                                <span class="time-badge"><i class="bi bi-clock me-1 text-secondary"></i> {{ record.check_out_time }}</span>
+                                {% else %}<span class="text-muted">—</span>{% endif %}
+                            </td>
+                            <td>
+                                {% if record.working_hours %}
+                                <span class="badge bg-dark bg-opacity-10 text-dark rounded-pill px-3 py-2 fw-semibold">{{ record.working_hours }}</span>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-secondary">
+                                {% if record.remarks %}
+                                <i class="bi bi-chat-left-quote me-1 text-info"></i> {{ record.remarks|truncate(35) }}
+                                {% else %}
+                                <span class="fst-italic text-muted">— no remarks —</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="py-5 my-2">
+                                    <i class="bi bi-calendar2-x display-1 text-muted opacity-25"></i>
+                                    <h5 class="text-muted mt-3 fw-semibold">No attendance records for today</h5>
+                                    <p class="text-muted">Use the enhanced form above to mark attendance for <strong>{{ today.strftime('%d %B, %Y') }}</strong></p>
+                                    <div class="mt-2"><i class="bi bi-arrow-up-circle-fill text-primary"></i> Select date & statuses</div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- extra visual insight block: recommendations or tips -->
+    <div class="row mt-5" data-aos="fade-up" data-aos-delay="300">
+        <div class="col-12">
+            <div class="alert alert-light border-0 bg-white shadow-sm rounded-4 d-flex align-items-center justify-content-between flex-wrap gap-3 p-4">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-megaphone-fill fs-2 text-primary"></i>
+                    <div>
+                        <strong class="d-block">Pro Tip:</strong>
+                        <span class="small text-secondary">Using check-in/out times auto-calculates working hours. For half-day, ensure proper timings or just mark half day status.</span>
+                    </div>
+                </div>
+                <i class="bi bi-graph-up-arrow text-success fs-4 opacity-75"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- style enhancements for interactivity -->
+<style>
+    .table-hover tbody tr:hover td {
+        background-color: #fafeff;
+        transition: 0.1s;
+    }
+    .form-modern, .form-select {
+        background-color: #ffffff;
+        box-shadow: inset 0 1px 1px rgba(0,0,0,0.02), 0 1px 0 rgba(0,0,0,0.02);
+    }
+    .form-modern:focus {
+        border-color: #2b6ef0;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(43,110,240,0.2);
+    }
+    .btn-outline-modern i, .btn-primary-glow i {
+        transition: transform 0.2s ease;
+    }
+    .btn-outline-modern:hover i {
+        transform: translateX(-3px);
+    }
+    .btn-primary-glow:hover i {
+        transform: translateY(-2px);
+    }
+    .avatar-icon {
+        transition: transform 0.1s ease;
+    }
+    tr:hover .avatar-icon {
+        transform: scale(1.01);
+        background: linear-gradient(145deg, #e5efff, #cddfef);
+    }
+    .badge.bg-primary {
+        background: #0c6dfd;
+    }
+    .rounded-4 {
+        border-radius: 24px;
+    }
+    .attendance-table th:first-child { border-top-left-radius: 20px; }
+    .attendance-table th:last-child { border-top-right-radius: 20px; }
+</style>
+
+<script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        AOS.init({ duration: 600, once: true, offset: 10 });
+    });
+</script>
+{% endblock %}
+</body>
+</html>

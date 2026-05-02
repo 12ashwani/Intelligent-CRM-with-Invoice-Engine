@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CRM AI Bot</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background: #f4f7fb;
+      color: #162033;
+    }
+
+    .page-shell {
+      min-height: 100vh;
+      padding: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .page-copy {
+      max-width: 560px;
+    }
+
+    .page-copy h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+      line-height: 1.2;
+    }
+
+    .page-copy p {
+      margin: 0;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .bot-launcher {
+      position: fixed;
+      right: 24px;
+      bottom: 24px;
+      z-index: 1000;
+      width: 64px;
+      height: 64px;
+      border: 0;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #14532d;
+      color: #fff;
+      cursor: pointer;
+      box-shadow: 0 18px 34px rgba(20, 83, 45, 0.34);
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .bot-launcher:hover,
+    .bot-launcher:focus {
+      background: #166534;
+      outline: 3px solid rgba(34, 197, 94, 0.22);
+    }
+
+    .bot-popup {
+      position: fixed;
+      right: 24px;
+      bottom: 100px;
+      z-index: 999;
+      width: min(420px, calc(100vw - 28px));
+      height: min(680px, calc(100vh - 124px));
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      background: #fff;
+      border: 1px solid #d8e2ef;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.26);
+      transform: translateY(18px) scale(0.97);
+      opacity: 0;
+      pointer-events: none;
+      transition: transform 0.18s ease, opacity 0.18s ease;
+    }
+
+    .bot-popup.open {
+      transform: translateY(0) scale(1);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .bot-header {
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: #14532d;
+      color: #fff;
+    }
+
+    .bot-title {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bot-mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.14);
+      font-weight: 800;
+    }
+
+    .bot-title strong,
+    .bot-title span {
+      display: block;
+    }
+
+    .bot-title strong {
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .bot-title span {
+      color: #dcfce7;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+
+    .bot-close {
+      width: 36px;
+      height: 36px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 8px;
+      background: transparent;
+      color: #fff;
+      cursor: pointer;
+      font-size: 20px;
+      line-height: 1;
+    }
+
+    .tool-strip {
+      padding: 10px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    .tool-chip {
+      flex: 0 0 auto;
+      border: 1px solid #d8e2ef;
+      border-radius: 999px;
+      background: #fff;
+      color: #172033;
+      padding: 8px 10px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .tool-chip:hover,
+    .tool-chip:focus {
+      border-color: #0f766e;
+      color: #0f766e;
+      outline: none;
+    }
+
+    .chat-box {
+      min-height: 0;
+      padding: 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.88), rgba(248,250,252,0.98)),
+        radial-gradient(circle at 100% 0%, rgba(20, 83, 45, 0.08), transparent 30%);
+    }
+
+    .message {
+      max-width: 88%;
+      display: grid;
+      gap: 4px;
+    }
+
+    .message.user {
+      align-self: flex-end;
+    }
+
+    .message.bot {
+      align-self: flex-start;
+    }
+
+    .bubble {
+      padding: 11px 12px;
+      border-radius: 8px;
+      border: 1px solid #d8e2ef;
+      background: #fff;
+      color: #172033;
+      font-size: 13px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .message.user .bubble {
+      border-color: #14532d;
+      background: #14532d;
+      color: #fff;
+    }
+
+    .meta {
+      color: #64748b;
+      font-size: 11px;
+    }
+
+    .message.user .meta {
+      text-align: right;
+    }
+
+    .record-list {
+      display: grid;
+      gap: 9px;
+    }
+
+    .record-card {
+      padding: 10px;
+      border: 1px solid #d8e2ef;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .record-card h4 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      line-height: 1.25;
+      color: #0f172a;
+    }
+
+    .record-card dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: 120px minmax(0, 1fr);
+      gap: 5px 10px;
+      font-size: 12px;
+    }
+
+    .record-card dt {
+      color: #64748b;
+      font-weight: 700;
+      text-transform: capitalize;
+    }
+
+    .record-card dd {
+      margin: 0;
+      min-width: 0;
+      word-break: break-word;
+    }
+
+    .chat-input {
+      padding: 12px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 44px;
+      gap: 9px;
+      border-top: 1px solid #e2e8f0;
+      background: #fff;
+    }
+
+    .chat-input input {
+      min-width: 0;
+      min-height: 44px;
+      border: 1px solid #d8e2ef;
+      border-radius: 8px;
+      padding: 0 12px;
+      outline: none;
+      color: #172033;
+      font-size: 13px;
+    }
+
+    .chat-input input:focus {
+      border-color: #0f766e;
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+    }
+
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      border: 0;
+      border-radius: 8px;
+      background: #14532d;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 800;
+    }
+
+    .send-btn:disabled {
+      cursor: progress;
+      opacity: 0.75;
+    }
+
+    .typing {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .typing span {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #0f766e;
+      animation: typing 0.9s infinite ease-in-out;
+    }
+
+    .typing span:nth-child(2) {
+      animation-delay: 0.14s;
+    }
+
+    .typing span:nth-child(3) {
+      animation-delay: 0.28s;
+    }
+
+    @keyframes typing {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+      40% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    @media (max-width: 520px) {
+      .page-shell {
+        padding: 24px;
+      }
+
+      .bot-launcher {
+        right: 16px;
+        bottom: 16px;
+      }
+
+      .bot-popup {
+        right: 14px;
+        bottom: 92px;
+        height: min(650px, calc(100vh - 110px));
+      }
+
+      .record-card dl {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <div class="page-copy">
+      <h1>CRM AI Bot</h1>
+      <p>Click the AI button at the bottom right. This bot answers only from CRM tools: leads, payments, customers, status reports, and service document lists.</p>
+    </div>
+  </main>
+
+  <section class="bot-popup" id="botPopup" aria-label="CRM AI chat" aria-hidden="true">
+    <div class="bot-header">
+      <div class="bot-title">
+        <div class="bot-mark">AI</div>
+        <div>
+          <strong>CRM AI Assistant</strong>
+          <span>Answers from crm_tools.py only</span>
+        </div>
+      </div>
+      <button class="bot-close" id="botClose" type="button" aria-label="Close chat">x</button>
+    </div>
+
+    <div class="tool-strip">
+      <button class="tool-chip" type="button" data-question="today leads">Today leads</button>
+      <button class="tool-chip" type="button" data-question="pending payments">Pending payments</button>
+      <button class="tool-chip" type="button" data-question="status report">Status report</button>
+      <button class="tool-chip" type="button" data-question="search customer ">Search customer</button>
+      <button class="tool-chip" type="button" data-question="lead details ">Lead details</button>
+      <button class="tool-chip" type="button" data-question="payment history ">Payment history</button>
+      <button class="tool-chip" type="button" data-question="documents required for gst registration">GST documents</button>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+      <div class="message bot">
+        <div class="bubble">Hello. Ask me CRM questions only. Try: today leads, pending payments, status report, lead details company name, search customer mobile, payment history company name, or documents required for GST registration.</div>
+        <div class="meta">crm_tools.py ready</div>
+      </div>
+    </div>
+
+    <form class="chat-input" id="chatForm">
+      <input type="text" id="userInput" placeholder="Ask CRM question..." autocomplete="off" required>
+      <button class="send-btn" id="sendBtn" type="submit" aria-label="Send">></button>
+    </form>
+  </section>
+
+  <button class="bot-launcher" id="botLauncher" type="button" aria-label="Open CRM AI bot">AI</button>
+
+  <script>
+    const botPopup = document.getElementById('botPopup');
+    const botLauncher = document.getElementById('botLauncher');
+    const botClose = document.getElementById('botClose');
+    const chatBox = document.getElementById('chatBox');
+    const chatForm = document.getElementById('chatForm');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+
+    const recordFields = [
+      'id', 'date', 'company_name', 'service', 'status', 'auth_person_name',
+      'auth_person_number', 'auth_person_email', 'email', 'marketing_executive_name',
+      'operation_executive_name', 'account_executive_name', 'file_status',
+      'filing_date', 'govt_payment_status', 'professional_payment_status',
+      'total_amount', 'govt_amount', 'professional_amount', 'payment_date',
+      'account_remark'
+    ];
+
+    function openBot() {
+      botPopup.classList.add('open');
+      botPopup.setAttribute('aria-hidden', 'false');
+      userInput.focus();
+    }
+
+    function closeBot() {
+      botPopup.classList.remove('open');
+      botPopup.setAttribute('aria-hidden', 'true');
+      botLauncher.focus();
+    }
+
+    function labelFor(key) {
+      return key.replace(/_/g, ' ');
+    }
+
+    function addTextMessage(text, sender, meta) {
+      const message = document.createElement('div');
+      message.className = 'message ' + sender;
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.textContent = String(text == null ? '' : text);
+
+      const metaLine = document.createElement('div');
+      metaLine.className = 'meta';
+      metaLine.textContent = meta || (sender === 'user' ? 'You' : 'CRM tool');
+
+      message.appendChild(bubble);
+      message.appendChild(metaLine);
+      chatBox.appendChild(message);
+      chatBox.scrollTop = chatBox.scrollHeight;
+      return message;
+    }
+
+    function addTyping() {
+      const message = document.createElement('div');
+      message.className = 'message bot';
+      message.id = 'typingIndicator';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+      bubble.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = 'CRM tool is running';
+
+      message.appendChild(bubble);
+      message.appendChild(meta);
+      chatBox.appendChild(message);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function removeTyping() {
+      const typing = document.getElementById('typingIndicator');
+      if (typing) typing.remove();
+    }
+
+    function recordTitle(record, index) {
+      return record.company_name || record.status || record.service || ('Record ' + (index + 1));
+    }
+
+    function buildRecord(record, index) {
+      const card = document.createElement('article');
+      card.className = 'record-card';
+
+      const title = document.createElement('h4');
+      title.textContent = recordTitle(record, index);
+      card.appendChild(title);
+
+      const list = document.createElement('dl');
+      recordFields.forEach(function(field) {
+        const value = record[field];
+        if (value === undefined || value === null || value === '') return;
+
+        const dt = document.createElement('dt');
+        dt.textContent = labelFor(field);
+
+        const dd = document.createElement('dd');
+        dd.textContent = String(value);
+
+        list.appendChild(dt);
+        list.appendChild(dd);
+      });
+
+      card.appendChild(list);
+      return card;
+    }
+
+    function addCrmResponse(response, meta) {
+      const message = document.createElement('div');
+      message.className = 'message bot';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble';
+
+      if (Array.isArray(response)) {
+        if (!response.length) {
+          bubble.textContent = 'No matching CRM data found.';
+        } else {
+          const list = document.createElement('div');
+          list.className = 'record-list';
+          response.forEach(function(record, index) {
+            list.appendChild(buildRecord(record, index));
+          });
+          bubble.appendChild(list);
+        }
+      } else if (response && typeof response === 'object' && response.by_status) {
+        const lines = ['Total leads: ' + response.total].concat(response.by_status.map(function(row) {
+          return row.status + ': ' + row.total;
+        }));
+        bubble.textContent = lines.join('\n');
+      } else if (response && typeof response === 'object') {
+        bubble.textContent = Object.keys(response).map(function(key) {
+          const value = response[key];
+          if (Array.isArray(value)) {
+            return labelFor(key) + ':\n' + value.map(function(item, index) {
+              return (index + 1) + '. ' + item;
+            }).join('\n');
+          }
+          return labelFor(key) + ': ' + value;
+        }).join('\n\n');
+      } else {
+        bubble.textContent = String(response == null ? '' : response);
+      }
+
+      const metaLine = document.createElement('div');
+      metaLine.className = 'meta';
+      metaLine.textContent = meta || 'CRM tool';
+
+      message.appendChild(bubble);
+      message.appendChild(metaLine);
+      chatBox.appendChild(message);
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function setRunning(isRunning) {
+      sendBtn.disabled = isRunning;
+      sendBtn.innerHTML = isRunning
+        ? '<span class="typing"><span></span><span></span><span></span></span>'
+        : '>';
+    }
+
+    function askCrm(question) {
+      if (!question) return;
+      openBot();
+      addTextMessage(question, 'user', 'You');
+      addTyping();
+      setRunning(true);
+
+      fetch('{{ url_for("ai.ai_query") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message: question})
+      })
+      .then(function(response) {
+        return response.json().then(function(data) {
+          if (!response.ok) throw new Error(data.error || 'Request failed');
+          return data;
+        });
+      })
+      .then(function(data) {
+        const source = data.source === 'crm_help'
+          ? 'CRM tool help'
+          : (data.action ? data.action.replace(/_/g, ' ') : (data.source || 'crm tool'));
+        removeTyping();
+        addCrmResponse(data.response, 'Source: ' + source);
+      })
+      .catch(function(error) {
+        removeTyping();
+        addTextMessage('Error: ' + error.message, 'bot', 'CRM error');
+      })
+      .finally(function() {
+        setRunning(false);
+        userInput.focus();
+      });
+    }
+
+    botLauncher.addEventListener('click', function() {
+      if (botPopup.classList.contains('open')) {
+        closeBot();
+      } else {
+        openBot();
+      }
+    });
+
+    botClose.addEventListener('click', closeBot);
+
+    chatForm.addEventListener('submit', function(event) {
+      event.preventDefault();
+      const question = userInput.value.trim();
+      userInput.value = '';
+      askCrm(question);
+    });
+
+    document.querySelectorAll('[data-question]').forEach(function(button) {
+      button.addEventListener('click', function() {
+        const question = button.getAttribute('data-question');
+        userInput.value = question;
+        userInput.focus();
+        if (!question.endsWith(' ')) {
+          askCrm(question);
+        }
+      });
+    });
+
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' && botPopup.classList.contains('open')) {
+        closeBot();
+      }
+    });
+  </script>
+</body>
+</html>

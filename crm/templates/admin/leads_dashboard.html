@@ -1,0 +1,526 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Leads Dashboard | CRM{% endblock %}
+{% block page_title %}Leads Dashboard{% endblock %}
+
+{% block header_actions %}
+  <a id="csvDownloadLink" class="btn-secondary" href="{{ url_for('admin.download_leads') }}">
+    <i class="bi bi-filetype-csv"></i>
+    <span>Export CSV</span>
+  </a>
+  <button id="pdfExportBtn" class="btn-secondary" type="button">
+    <i class="bi bi-file-earmark-pdf"></i>
+    <span>Print / PDF</span>
+  </button>
+{% endblock %}
+
+{% block page_css %}
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1.5fr repeat(5, minmax(120px, 1fr)) auto;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .toolbar input,
+  .toolbar select {
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text-primary);
+    font: inherit;
+  }
+
+  .alert-box {
+    display: none;
+    margin-bottom: 18px;
+    border-radius: 16px;
+    padding: 14px 16px;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: var(--accent-warning);
+    font-weight: 600;
+  }
+
+  .cards,
+  .charts-3,
+  .grid-2 {
+    display: grid;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .cards {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .charts-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .grid-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-card,
+  .analytics-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 20px;
+  }
+
+  .metric-label {
+    color: var(--text-secondary);
+    font-size: 13px;
+    margin-bottom: 8px;
+  }
+
+  .metric-value {
+    font-size: 28px;
+    font-weight: 800;
+  }
+
+  .section-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .section-title h3 {
+    font-size: 18px;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  .badge.pending {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--accent-warning);
+  }
+
+  .badge.in-progress,
+  .badge.partial {
+    background: rgba(59, 130, 246, 0.12);
+    color: var(--accent-info);
+  }
+
+  .badge.completed,
+  .badge.paid {
+    background: rgba(16, 185, 129, 0.12);
+    color: var(--accent-success);
+  }
+
+  .progress {
+    width: 120px;
+    height: 8px;
+    background: var(--bg-tertiary);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+
+  .progress span {
+    display: block;
+    height: 100%;
+    background: var(--gradient-1);
+  }
+
+  @media (max-width: 1100px) {
+    .toolbar,
+    .cards,
+    .charts-3,
+    .grid-2 {
+      grid-template-columns: 1fr;
+    }
+  }
+{% endblock %}
+
+{% block content %}
+  <div class="toolbar">
+    <input id="globalSearch" type="text" placeholder="Search lead / employee / file..." value="{{ filters.search }}">
+    <select id="filterTeam">
+      <option value="">All Departments</option>
+      <option value="Marketing" {% if filters.team == 'Marketing' %}selected{% endif %}>Marketing</option>
+      <option value="Operations" {% if filters.team == 'Operations' %}selected{% endif %}>Operations</option>
+      <option value="Accounts" {% if filters.team == 'Accounts' %}selected{% endif %}>Accounts</option>
+    </select>
+    <select id="filterEmployee">
+      <option value="">All Employees</option>
+      {% for emp in employee_options %}
+        <option value="{{ emp.id }}" data-team="{{ emp.team }}" {% if filters.employee == emp.id|string %}selected{% endif %}>{{ emp.name }} ({{ emp.team }})</option>
+      {% endfor %}
+    </select>
+    <select id="filterStatus">
+      <option value="">All Status</option>
+      {% for s in lead_statuses %}
+        <option value="{{ s }}" {% if filters.status == s %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    <input id="filterDateFrom" type="date" value="{{ filters.date_from }}">
+    <input id="filterDateTo" type="date" value="{{ filters.date_to }}">
+    <button id="resetFiltersBtn" class="btn-soft" type="button">
+      <i class="bi bi-arrow-clockwise"></i>
+      <span>Reset</span>
+    </button>
+  </div>
+
+  <div id="pendingAlert" class="alert-box"></div>
+
+  <section class="cards">
+    <div class="metric-card"><div class="metric-label">Total Leads</div><div class="metric-value" id="kpiTotal">0</div></div>
+    <div class="metric-card"><div class="metric-label">Marketing Leads</div><div class="metric-value" id="kpiMarketing">0</div></div>
+    <div class="metric-card"><div class="metric-label">Operations Leads</div><div class="metric-value" id="kpiOperations">0</div></div>
+    <div class="metric-card"><div class="metric-label">Accounts Leads</div><div class="metric-value" id="kpiAccounts">0</div></div>
+  </section>
+
+  <section class="grid-2">
+    <div class="analytics-card">
+      <div class="section-title"><h3>Leads by Employee</h3></div>
+      <canvas id="employeeBarChart" height="120"></canvas>
+    </div>
+    <div class="analytics-card">
+      <div class="section-title"><h3>Leads by Department</h3></div>
+      <canvas id="departmentPieChart" height="120"></canvas>
+    </div>
+  </section>
+
+  <section class="grid-2">
+    <div class="analytics-card">
+      <div class="section-title"><h3>Employee Performance</h3></div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Assigned</th>
+              <th>Completed</th>
+              <th>Pending</th>
+              <th>Performance</th>
+            </tr>
+          </thead>
+          <tbody id="employeePerfBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="analytics-card">
+      <div class="section-title"><h3>File Status Tracking</h3></div>
+      <section class="cards" style="grid-template-columns:repeat(3,minmax(0,1fr));margin-bottom:16px;">
+        <div class="metric-card"><div class="metric-label">Pending</div><div class="metric-value" id="filePending">0</div></div>
+        <div class="metric-card"><div class="metric-label">In Progress</div><div class="metric-value" id="fileInProgress">0</div></div>
+        <div class="metric-card"><div class="metric-label">Completed</div><div class="metric-value" id="fileCompleted">0</div></div>
+      </section>
+      <canvas id="fileStatusDonut" height="130"></canvas>
+    </div>
+  </section>
+
+  <section class="cards" style="grid-template-columns:repeat(5,minmax(0,1fr));">
+    <div class="metric-card"><div class="metric-label">Total Fee</div><div class="metric-value" id="feeTotal">₹0</div></div>
+    <div class="metric-card"><div class="metric-label">Government Fee</div><div class="metric-value" id="feeGovt">₹0</div></div>
+    <div class="metric-card"><div class="metric-label">Professional Fee</div><div class="metric-value" id="feeProfessional">₹0</div></div>
+    <div class="metric-card"><div class="metric-label">Paid</div><div class="metric-value" id="feePaid">₹0</div></div>
+    <div class="metric-card"><div class="metric-label">Pending</div><div class="metric-value" id="feePending">₹0</div></div>
+  </section>
+
+  <section class="charts-3">
+    <div class="analytics-card">
+      <div class="section-title"><h3>Fee Distribution</h3></div>
+      <canvas id="feePieChart" height="130"></canvas>
+    </div>
+    <div class="analytics-card">
+      <div class="section-title"><h3>Monthly Revenue Trend</h3></div>
+      <canvas id="revenueLineChart" height="130"></canvas>
+    </div>
+    <div class="analytics-card">
+      <div class="section-title"><h3>Payment Status</h3></div>
+      <canvas id="paymentStatusPie" height="130"></canvas>
+    </div>
+  </section>
+
+  <section class="analytics-card">
+    <div class="section-title">
+      <h3>Filtered Leads List</h3>
+      <span class="btn-soft" id="leadCountPill">0 records</span>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Lead</th>
+            <th>Employee</th>
+            <th>Department</th>
+            <th>Workflow</th>
+            <th>File</th>
+            <th>Payment</th>
+            <th>Remarks</th>
+            <th>Last Update</th>
+            <th>Date</th>
+            <th>Fee</th>
+          </tr>
+        </thead>
+        <tbody id="leadRowsBody"></tbody>
+      </table>
+    </div>
+  </section>
+{% endblock %}
+
+{% block page_scripts %}
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script>
+    const initialPayload = {{ initial_payload|tojson }};
+    const charts = {};
+    let fetchTimer = null;
+
+    const elements = {
+      search: document.getElementById('globalSearch'),
+      team: document.getElementById('filterTeam'),
+      employee: document.getElementById('filterEmployee'),
+      status: document.getElementById('filterStatus'),
+      dateFrom: document.getElementById('filterDateFrom'),
+      dateTo: document.getElementById('filterDateTo'),
+      resetBtn: document.getElementById('resetFiltersBtn'),
+      csvLink: document.getElementById('csvDownloadLink'),
+      pdfBtn: document.getElementById('pdfExportBtn'),
+      alert: document.getElementById('pendingAlert')
+    };
+
+    function money(v) {
+      return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(v || 0);
+    }
+
+    function getFilterParams() {
+      const params = new URLSearchParams();
+      if (elements.search.value.trim()) params.set('search', elements.search.value.trim());
+      if (elements.team.value) params.set('team', elements.team.value);
+      if (elements.employee.value) params.set('employee', elements.employee.value);
+      if (elements.status.value) params.set('status', elements.status.value);
+      if (elements.dateFrom.value) params.set('date_from', elements.dateFrom.value);
+      if (elements.dateTo.value) params.set('date_to', elements.dateTo.value);
+      return params;
+    }
+
+    function applyEmployeeFilterByTeam() {
+      const team = elements.team.value;
+      const selected = elements.employee.value;
+      let selectedStillAvailable = selected === '';
+
+      Array.from(elements.employee.options).forEach((option, idx) => {
+        if (idx === 0) {
+          option.hidden = false;
+          return;
+        }
+        const optionTeam = option.getAttribute('data-team');
+        const visible = !team || optionTeam === team;
+        option.hidden = !visible;
+        if (visible && option.value === selected) selectedStillAvailable = true;
+      });
+
+      if (!selectedStillAvailable) elements.employee.value = '';
+    }
+
+    function badgeClassFile(status) {
+      const s = (status || '').toLowerCase();
+      if (s.includes('completed')) return 'completed';
+      if (s.includes('progress')) return 'in-progress';
+      return 'pending';
+    }
+
+    function badgeClassPayment(status) {
+      const s = (status || '').toLowerCase();
+      if (s === 'paid') return 'paid';
+      if (s === 'partial') return 'partial';
+      return 'pending';
+    }
+
+    function createOrUpdateChart(key, canvasId, config) {
+      const ctx = document.getElementById(canvasId);
+      if (!ctx) return;
+      if (charts[key]) {
+        charts[key].data = config.data;
+        charts[key].options = config.options;
+        charts[key].update();
+        return;
+      }
+      charts[key] = new Chart(ctx, config);
+    }
+
+    function renderKpis(payload) {
+      const m = payload.metrics;
+      document.getElementById('kpiTotal').textContent = m.total_leads;
+      document.getElementById('kpiMarketing').textContent = m.marketing_leads;
+      document.getElementById('kpiOperations').textContent = m.operations_leads;
+      document.getElementById('kpiAccounts').textContent = m.accounts_leads;
+
+      const f = payload.finance;
+      document.getElementById('feeTotal').textContent = money(f.total_fee);
+      document.getElementById('feeGovt').textContent = money(f.govt_fee);
+      document.getElementById('feeProfessional').textContent = money(f.professional_fee);
+      document.getElementById('feePaid').textContent = money(f.paid_amount);
+      document.getElementById('feePending').textContent = money(f.pending_amount);
+
+      const fs = payload.charts.file_status;
+      document.getElementById('filePending').textContent = fs.values[0] || 0;
+      document.getElementById('fileInProgress').textContent = fs.values[1] || 0;
+      document.getElementById('fileCompleted').textContent = fs.values[2] || 0;
+    }
+
+    function renderEmployeeTable(payload) {
+      const tbody = document.getElementById('employeePerfBody');
+      const rows = payload.employee_performance || [];
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="muted">No employee performance data.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(row => `
+        <tr>
+          <td><strong>${row.employee_name}</strong><div class="muted" style="font-size:11px;">${row.team}</div></td>
+          <td>${row.total_assigned}</td>
+          <td>${row.completed}</td>
+          <td>${row.pending}</td>
+          <td>
+            <div class="progress"><span style="width:${row.completion_rate}%;"></span></div>
+            <div class="muted" style="font-size:11px;margin-top:4px;">${row.completion_rate}%</div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderLeadRows(payload) {
+      const tbody = document.getElementById('leadRowsBody');
+      const rows = payload.lead_rows || [];
+      document.getElementById('leadCountPill').textContent = `${rows.length} records`;
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="muted">No leads found for these filters.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = rows.map(row => `
+        <tr>
+          <td><strong>${row.company_name}</strong><div class="muted" style="font-size:11px;">${row.service}</div></td>
+          <td>${row.employee_name}</td>
+          <td>${row.team}</td>
+          <td><strong>${row.workflow_status_label}</strong><div class="muted" style="font-size:11px;">${row.pending_label}</div></td>
+          <td><span class="badge ${badgeClassFile(row.file_status_bucket)}">${row.file_status_bucket}</span></td>
+          <td><span class="badge ${badgeClassPayment(row.payment_bucket)}">${row.payment_bucket}</span><div class="muted" style="font-size:11px;margin-top:4px;">Govt: ${row.govt_fee_status_label} · Cert: ${row.certificate_status}</div></td>
+          <td style="font-size:11px;line-height:1.5;">Ops: ${row.operation_remark}<br>Acc: ${row.account_remark}<br>Dept: ${row.department_remark}</td>
+          <td style="font-size:11px;line-height:1.5;">${row.last_updated_by_name}<br>${row.last_updated_at_display}</td>
+          <td>${row.date || '-'}</td>
+          <td>${money(row.total_fee)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderCharts(payload) {
+      const c = payload.charts;
+      createOrUpdateChart('employeeBar', 'employeeBarChart', {
+        type: 'bar',
+        data: { labels: c.leads_by_employee.labels, datasets: [{ label: 'Leads', data: c.leads_by_employee.values, backgroundColor: '#6366f1' }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+
+      createOrUpdateChart('deptPie', 'departmentPieChart', {
+        type: 'pie',
+        data: { labels: c.leads_by_department.labels, datasets: [{ data: c.leads_by_department.values, backgroundColor: ['#3b82f6', '#f59e0b', '#22c55e'] }] },
+        options: { responsive: true }
+      });
+
+      createOrUpdateChart('fileDonut', 'fileStatusDonut', {
+        type: 'doughnut',
+        data: { labels: c.file_status.labels, datasets: [{ data: c.file_status.values, backgroundColor: ['#f59e0b', '#3b82f6', '#22c55e'] }] },
+        options: { responsive: true }
+      });
+
+      createOrUpdateChart('feePie', 'feePieChart', {
+        type: 'pie',
+        data: { labels: c.fee_distribution.labels, datasets: [{ data: c.fee_distribution.values, backgroundColor: ['#60a5fa', '#34d399'] }] },
+        options: { responsive: true }
+      });
+
+      createOrUpdateChart('revenueLine', 'revenueLineChart', {
+        type: 'line',
+        data: { labels: c.monthly_revenue.labels, datasets: [{ label: 'Revenue', data: c.monthly_revenue.values, borderColor: '#8b5cf6', tension: 0.35, fill: false }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+
+      createOrUpdateChart('paymentPie', 'paymentStatusPie', {
+        type: 'doughnut',
+        data: { labels: c.payment_status.labels, datasets: [{ data: c.payment_status.values, backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'] }] },
+        options: { responsive: true }
+      });
+    }
+
+    function renderAlerts(payload) {
+      const pendingTasks = payload.alerts?.pending_tasks || 0;
+      if (pendingTasks > 0) {
+        elements.alert.style.display = 'block';
+        elements.alert.innerHTML = `<i class="bi bi-bell-fill"></i> ${pendingTasks} pending tasks detected in file and payment workflow.`;
+      } else {
+        elements.alert.style.display = 'none';
+      }
+    }
+
+    function syncExportLink() {
+      const params = getFilterParams().toString();
+      elements.csvLink.href = `{{ url_for('admin.download_leads') }}${params ? `?${params}` : ''}`;
+    }
+
+    function renderAll(payload) {
+      renderKpis(payload);
+      renderEmployeeTable(payload);
+      renderLeadRows(payload);
+      renderCharts(payload);
+      renderAlerts(payload);
+      syncExportLink();
+    }
+
+    async function fetchAnalytics() {
+      const params = getFilterParams().toString();
+      const res = await fetch(`{{ url_for('admin.leads_analytics') }}?${params}`);
+      if (!res.ok) return;
+      const payload = await res.json();
+      renderAll(payload);
+    }
+
+    function scheduleFetch() {
+      clearTimeout(fetchTimer);
+      fetchTimer = setTimeout(fetchAnalytics, 260);
+    }
+
+    ['input', 'change'].forEach(evt => {
+      elements.search.addEventListener(evt, scheduleFetch);
+      elements.team.addEventListener(evt, () => { applyEmployeeFilterByTeam(); scheduleFetch(); });
+      elements.employee.addEventListener(evt, scheduleFetch);
+      elements.status.addEventListener(evt, scheduleFetch);
+      elements.dateFrom.addEventListener(evt, scheduleFetch);
+      elements.dateTo.addEventListener(evt, scheduleFetch);
+    });
+
+    elements.resetBtn.addEventListener('click', () => {
+      elements.search.value = '';
+      elements.team.value = '';
+      elements.employee.value = '';
+      elements.status.value = '';
+      elements.dateFrom.value = '';
+      elements.dateTo.value = '';
+      applyEmployeeFilterByTeam();
+      fetchAnalytics();
+    });
+
+    elements.pdfBtn.addEventListener('click', () => window.print());
+
+    setInterval(fetchAnalytics, 60000);
+    applyEmployeeFilterByTeam();
+    renderAll(initialPayload);
+  </script>
+{% endblock %}

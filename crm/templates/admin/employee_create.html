@@ -1,0 +1,298 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Add Employee | CRM{% endblock %}
+{% block page_title %}Add Employee{% endblock %}
+
+{% block page_css %}
+  .page-intro {
+    margin-bottom: 20px;
+  }
+
+  .page-intro h1 {
+    font-size: 30px;
+    margin-bottom: 8px;
+  }
+
+  .page-intro p {
+    color: var(--text-secondary);
+  }
+
+  .form-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 26px;
+  }
+
+  .form-section + .form-section {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .section-title {
+    margin-bottom: 16px;
+  }
+
+  .section-title h2 {
+    font-size: 18px;
+    margin-bottom: 6px;
+  }
+
+  .section-title p {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  .form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .full-width {
+    grid-column: 1 / -1;
+  }
+
+  .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .required {
+    color: var(--accent-danger);
+  }
+
+  .form-group input,
+  .form-group select {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--card-soft);
+    color: var(--text-primary);
+    font: inherit;
+  }
+
+  .role-pills {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+
+  .role-pill {
+    border: 1px solid var(--border);
+    background: var(--card-soft);
+    color: var(--text-secondary);
+    border-radius: 999px;
+    padding: 7px 11px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .role-pill.is-selected {
+    border-color: var(--accent-primary);
+    color: var(--accent-primary);
+  }
+
+  .password-strength {
+    margin-top: 10px;
+  }
+
+  .strength-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--bg-tertiary);
+    overflow: hidden;
+  }
+
+  .strength-fill {
+    height: 100%;
+    width: 0;
+    transition: 0.2s ease;
+  }
+
+  .strength-text {
+    margin-top: 8px;
+    color: var(--text-muted);
+    font-size: 12px;
+  }
+
+  .form-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 24px;
+    flex-wrap: wrap;
+  }
+
+  @media (max-width: 900px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.employees_list') }}" class="btn-secondary">
+    <i class="bi bi-people-fill"></i>
+    <span>Back to Employees</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+  <div class="page-intro">
+    <h1>Create New Employee</h1>
+    <p>Add a team member with profile details and login credentials from one clean working form.</p>
+  </div>
+
+  <div class="form-card">
+    <form method="POST" action="{{ url_for('admin.create_employee') }}">
+      <div class="form-section">
+        <div class="section-title">
+          <h2>Personal Information</h2>
+          <p>Basic employee details used in the directory and other modules.</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label>Full Name <span class="required">*</span></label>
+            <input type="text" name="name" required value="{{ request.form.get('name', '') }}">
+          </div>
+
+          <div class="form-group">
+            <label>Email Address</label>
+            <input type="email" name="email" value="{{ request.form.get('email', '') }}">
+          </div>
+
+          <div class="form-group">
+            <label>Phone Number</label>
+            <input type="text" name="phone" value="{{ request.form.get('phone', '') }}">
+          </div>
+
+          <div class="form-group">
+            <label>Department <span class="required">*</span></label>
+            <select name="department" required>
+              <option value="" disabled {% if not request.form.get('department') %}selected{% endif %}>Select department</option>
+              <option value="Marketing" {% if request.form.get('department') == 'Marketing' %}selected{% endif %}>Marketing</option>
+              <option value="Operations" {% if request.form.get('department') == 'Operations' %}selected{% endif %}>Operations</option>
+              <option value="Admin" {% if request.form.get('department') == 'Admin' %}selected{% endif %}>Admin</option>
+              <option value="Accounts" {% if request.form.get('department') == 'Accounts' %}selected{% endif %}>Accounts</option>
+              <option value="HR" {% if request.form.get('department') == 'HR' %}selected{% endif %}>HR</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Role / Designation</label>
+            <input type="text" name="role" id="roleInput" value="{{ request.form.get('role', '') }}">
+            <div class="role-pills">
+              <button type="button" class="role-pill" data-role="admin">Admin</button>
+              <button type="button" class="role-pill" data-role="marketing">Marketing</button>
+              <button type="button" class="role-pill" data-role="operations">Operations</button>
+              <button type="button" class="role-pill" data-role="accounts">Accounts</button>
+              <button type="button" class="role-pill" data-role="hr">HR</button>
+              <button type="button" class="role-pill" data-role="employee">Employee</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="section-title">
+          <h2>Login Credentials</h2>
+          <p>Create the username and password that the employee will use to sign in.</p>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Username <span class="required">*</span></label>
+            <input type="text" name="username" required value="{{ request.form.get('username', '') }}">
+          </div>
+
+          <div class="form-group">
+            <label>Password <span class="required">*</span></label>
+            <input type="password" name="password" id="passwordInput" required>
+            <div class="password-strength">
+              <div class="strength-bar">
+                <div class="strength-fill" id="strengthFill"></div>
+              </div>
+              <div class="strength-text" id="strengthText">Use at least 6 characters for a valid password.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-footer">
+        <a href="{{ url_for('admin.employees_list') }}" class="btn-secondary">
+          <i class="bi bi-x-lg"></i>
+          <span>Cancel</span>
+        </a>
+        <button type="submit" class="btn-primary">
+          <i class="bi bi-check-lg"></i>
+          <span>Create Employee</span>
+        </button>
+      </div>
+    </form>
+  </div>
+{% endblock %}
+
+{% block page_scripts %}
+  <script>
+    (function() {
+      const roleInput = document.getElementById('roleInput');
+      const rolePills = Array.from(document.querySelectorAll('.role-pill'));
+      const passwordInput = document.getElementById('passwordInput');
+      const strengthFill = document.getElementById('strengthFill');
+      const strengthText = document.getElementById('strengthText');
+
+      function syncRolePills() {
+        const activeRole = (roleInput.value || '').trim().toLowerCase();
+        rolePills.forEach(function(pill) {
+          pill.classList.toggle('is-selected', pill.dataset.role === activeRole);
+        });
+      }
+
+      rolePills.forEach(function(pill) {
+        pill.addEventListener('click', function() {
+          roleInput.value = pill.dataset.role;
+          syncRolePills();
+        });
+      });
+
+      roleInput.addEventListener('input', syncRolePills);
+      syncRolePills();
+
+      function updatePasswordStrength() {
+        const password = passwordInput.value || '';
+        let score = 0;
+        if (password.length >= 6) score++;
+        if (password.length >= 8) score++;
+        if (/[A-Z]/.test(password)) score++;
+        if (/[0-9]/.test(password)) score++;
+        if (/[^A-Za-z0-9]/.test(password)) score++;
+
+        const levels = [
+          { width: '0%', color: '#ef4444', text: 'Use at least 6 characters for a valid password.' },
+          { width: '20%', color: '#ef4444', text: 'Password is weak.' },
+          { width: '40%', color: '#f59e0b', text: 'Password can be stronger.' },
+          { width: '60%', color: '#f59e0b', text: 'Password strength is fair.' },
+          { width: '80%', color: '#10b981', text: 'Password is strong.' },
+          { width: '100%', color: '#10b981', text: 'Password is very strong.' }
+        ];
+
+        const level = levels[score];
+        strengthFill.style.width = level.width;
+        strengthFill.style.background = level.color;
+        strengthText.textContent = level.text;
+      }
+
+      passwordInput.addEventListener('input', updatePasswordStrength);
+      updatePasswordStrength();
+    })();
+  </script>
+{% endblock %}

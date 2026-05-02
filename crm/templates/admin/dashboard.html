@@ -1,0 +1,173 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Admin Dashboard | CRM{% endblock %}
+{% block page_title %}Admin Dashboard{% endblock %}
+
+{% block page_css %}
+  .hero {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+
+  .hero h1 {
+    font-size: 32px;
+    line-height: 1.1;
+  }
+
+  .hero p {
+    color: var(--text-secondary);
+    max-width: 760px;
+  }
+
+  .stats-grid,
+  .actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 18px;
+  }
+
+  .stats-grid {
+    margin-bottom: 24px;
+  }
+
+  .stat-card,
+  .action-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 22px;
+    padding: 22px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .stat-top,
+  .action-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+
+  .stat-icon,
+  .action-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-tertiary);
+    color: var(--accent-primary);
+    font-size: 22px;
+  }
+
+  .stat-label {
+    color: var(--text-secondary);
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+
+  .stat-number {
+    font-size: 34px;
+    font-weight: 800;
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 28px 0 16px;
+  }
+
+  .section-head h2 {
+    font-size: 20px;
+  }
+
+  .action-card {
+    text-decoration: none;
+    color: inherit;
+    transition: 0.2s ease;
+  }
+
+  .action-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(99, 102, 241, 0.45);
+  }
+
+  .action-card h3 {
+    margin-bottom: 8px;
+    font-size: 17px;
+  }
+
+  .action-card p {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+{% endblock %}
+
+{% block header_actions %}
+  <a href="{{ url_for('admin.create_employee') }}" class="btn-primary">
+    <i class="bi bi-person-plus-fill"></i>
+    <span>Add Employee</span>
+  </a>
+{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <h1>Hello, {{ current_user.name or current_user.username }}</h1>
+    <p>
+      This admin workspace now keeps the same sidebar, theme, and working action buttons across the main admin pages.
+    </p>
+  </section>
+
+  <section class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-top">
+        <div class="stat-icon"><i class="bi bi-diagram-3-fill"></i></div>
+      </div>
+      <div class="stat-label">Total Leads</div>
+      <div class="stat-number">{{ total_leads }}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top">
+        <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
+      </div>
+      <div class="stat-label">Total Employees</div>
+      <div class="stat-number">{{ total_employees }}</div>
+    </div>
+  </section>
+
+  <div class="section-head">
+    <h2>Working Actions</h2>
+  </div>
+
+  <section class="actions-grid">
+    <a href="{{ url_for('admin.employees_list') }}" class="action-card">
+      <div class="action-top">
+        <div class="action-icon"><i class="bi bi-people-fill"></i></div>
+        <i class="bi bi-arrow-right"></i>
+      </div>
+      <h3>Manage Employees</h3>
+      <p>View employee records, edit details, open credentials, and delete employees when allowed.</p>
+    </a>
+
+    <a href="{{ url_for('admin.leads_dashboard') }}" class="action-card">
+      <div class="action-top">
+        <div class="action-icon"><i class="bi bi-bar-chart-steps"></i></div>
+        <i class="bi bi-arrow-right"></i>
+      </div>
+      <h3>Open Leads Dashboard</h3>
+      <p>Review analytics, filter leads, and export the current lead data as CSV or printable PDF.</p>
+    </a>
+
+    <a href="{{ url_for('admin.create_employee') }}" class="action-card">
+      <div class="action-top">
+        <div class="action-icon"><i class="bi bi-person-plus-fill"></i></div>
+        <i class="bi bi-arrow-right"></i>
+      </div>
+      <h3>Add Employee</h3>
+      <p>Create a new employee profile and login account from one clean working form.</p>
+    </a>
+  </section>
+{% endblock %}
