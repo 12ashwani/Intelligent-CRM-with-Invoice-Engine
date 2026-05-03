@@ -2,7 +2,7 @@ import os
 from datetime import datetime
 
 from flask import Blueprint, flash, redirect, render_template, request
-from MySQLdb.cursors import DictCursor
+from app.db_compat import DictCursor
 from werkzeug.utils import secure_filename
 
 from app import mysql

@@ -239,13 +239,14 @@
                                     <table class="table table-bordered mb-0" id="itemsTable">
                                         <thead class="table-light">
                                             <tr class="text-center">
-                                                <th style="width: 35%;">Description</th>
+                                                <th style="width: 32%;">Description</th>
                                                 <th style="width: 12%;">SAC/HSN</th>
-                                                <th style="width: 10%;">Quantity</th>
-                                                <th style="width: 13%;">Rate (₹)</th>
-                                                <th style="width: 13%;">Discount (%)</th>
-                                                <th style="width: 15%;">Amount (₹)</th>
-                                                <th style="width: 5%;"></th>
+                                                <th style="width: 9%;">Quantity</th>
+                                                <th style="width: 12%;">Rate</th>
+                                                <th style="width: 10%;">Discount (%)</th>
+                                                <th style="width: 10%;">GST Rate (%)</th>
+                                                <th style="width: 12%;">Amount</th>
+                                                <th style="width: 3%;"></th>
                                             </tr>
                                         </thead>
                                         <tbody id="items">
@@ -265,6 +266,9 @@
                                                 <td>
                                                     <input type="number" name="discount[]" class="form-control form-control-sm discount" step="0.01" min="0" max="100" value="0">
                                                 </td>
+                                                <td>
+                                                    <input type="number" name="tax_rate[]" class="form-control form-control-sm tax-rate" step="0.01" min="0" max="100" value="18">
+                                                </td>
                                                 <td class="text-end align-middle fw-bold row-total">0.00</td>
                                                 <td class="text-center">
                                                     <button type="button" class="btn btn-sm btn-outline-danger remove-item">
@@ -275,27 +279,27 @@
                                         </tbody>
                                         <tfoot class="table-light">
                                             <tr>
-                                                <td colspan="5" class="text-end fw-bold">Subtotal</td>
+                                                <td colspan="6" class="text-end fw-bold">Subtotal</td>
                                                 <td class="text-end fw-bold" id="subtotal">0.00</td>
                                                 <td></td>
                                             </tr>
                                             <tr id="cgstRow">
-                                                <td colspan="5" class="text-end">CGST (9%)</td>
+                                                <td colspan="6" class="text-end" id="cgstLabel">CGST</td>
                                                 <td class="text-end" id="cgstAmount">0.00</td>
                                                 <td></td>
                                             </tr>
                                             <tr id="sgstRow">
-                                                <td colspan="5" class="text-end">SGST (9%)</td>
+                                                <td colspan="6" class="text-end" id="sgstLabel">SGST</td>
                                                 <td class="text-end" id="sgstAmount">0.00</td>
                                                 <td></td>
                                             </tr>
                                             <tr id="igstRow" style="display:none;">
-                                                <td colspan="5" class="text-end">IGST (18%)</td>
+                                                <td colspan="6" class="text-end" id="igstLabel">IGST</td>
                                                 <td class="text-end" id="igstAmount">0.00</td>
                                                 <td></td>
                                             </tr>
                                             <tr class="table-primary">
-                                                <td colspan="5" class="text-end fw-bold fs-5">Grand Total</td>
+                                                <td colspan="6" class="text-end fw-bold fs-5">Grand Total</td>
                                                 <td class="text-end fw-bold fs-5" id="grandTotal">0.00</td>
                                                 <td></td>
                                             </tr>
@@ -363,26 +367,36 @@
         const qty = parseMoney(row.querySelector(".qty").value);
         const price = parseMoney(row.querySelector(".price").value);
         const discount = parseMoney(row.querySelector(".discount").value);
+        const taxRate = parseMoney(row.querySelector(".tax-rate").value);
         let total = qty * price;
         if (discount > 0) {
             total = total * (1 - discount / 100);
         }
         row.querySelector(".row-total").innerText = formatMoney(total);
-        return total;
+        return { taxable: total, taxRate: Math.max(0, taxRate) };
     }
 
     function calculateTotals() {
         let subtotal = 0;
+        let taxTotal = 0;
         document.querySelectorAll("#items .item-row").forEach(row => {
-            subtotal += calculateItemTotal(row);
+            const line = calculateItemTotal(row);
+            subtotal += line.taxable;
+
+            const customerState = document.getElementById("customer_state").value.trim().toLowerCase();
+            const isInterState = COMPANY_STATE && customerState && COMPANY_STATE !== customerState;
+            if (isInterState) {
+                taxTotal += line.taxable * (line.taxRate / 100);
+            } else {
+                taxTotal += line.taxable * (line.taxRate / 100);
+            }
         });
 
         const customerState = document.getElementById("customer_state").value.trim().toLowerCase();
         const isInterState = COMPANY_STATE && customerState && COMPANY_STATE !== customerState;
-        
-        const cgst = isInterState ? 0 : subtotal * 0.09;
-        const sgst = isInterState ? 0 : subtotal * 0.09;
-        const igst = isInterState ? subtotal * 0.18 : 0;
+        const cgst = isInterState ? 0 : taxTotal / 2;
+        const sgst = isInterState ? 0 : taxTotal / 2;
+        const igst = isInterState ? taxTotal : 0;
         const total = subtotal + cgst + sgst + igst;
 
         document.getElementById("subtotal").innerText = formatMoney(subtotal);
@@ -390,6 +404,9 @@
         document.getElementById("sgstAmount").innerText = formatMoney(sgst);
         document.getElementById("igstAmount").innerText = formatMoney(igst);
         document.getElementById("grandTotal").innerText = formatMoney(total);
+        document.getElementById("cgstLabel").innerText = "CGST";
+        document.getElementById("sgstLabel").innerText = "SGST";
+        document.getElementById("igstLabel").innerText = "IGST";
         
         document.getElementById("cgstRow").style.display = isInterState ? "none" : "";
         document.getElementById("sgstRow").style.display = isInterState ? "none" : "";
@@ -400,6 +417,7 @@
         row.querySelector(".qty").addEventListener("input", calculateTotals);
         row.querySelector(".price").addEventListener("input", calculateTotals);
         row.querySelector(".discount").addEventListener("input", calculateTotals);
+        row.querySelector(".tax-rate").addEventListener("input", calculateTotals);
     }
 
     function addItemRow(description = "", sac = "", qty = 1, price = 0) {
@@ -412,6 +430,7 @@
             <td><input type="number" name="qty[]" class="form-control form-control-sm qty" min="1" value="${qty}" required></td>
             <td><input type="number" name="price[]" class="form-control form-control-sm price" step="0.01" min="0" value="${price}" required></td>
             <td><input type="number" name="discount[]" class="form-control form-control-sm discount" step="0.01" min="0" max="100" value="0"></td>
+            <td><input type="number" name="tax_rate[]" class="form-control form-control-sm tax-rate" step="0.01" min="0" max="100" value="18"></td>
             <td class="text-end align-middle fw-bold row-total">0.00</td>
             <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger remove-item"><i class="fas fa-trash-alt"></i></button></td>
         `;
@@ -556,29 +575,74 @@
         });
 
         document.getElementById("customer_state").addEventListener("input", calculateTotals);
+        // GSTIN validation and auto-fill state
+
         
-        document.getElementById("customer_gstin").addEventListener("input", function() {
+        document.getElementById("customer_gstin").addEventListener("input", function () {
             let gstin = this.value.trim().toUpperCase();
             this.value = gstin;
+
             const validationSpan = document.getElementById("gstinValidation");
-            if (gstin && !validateGSTIN(gstin)) {
-                validationSpan.innerHTML = '<i class="fas fa-exclamation-triangle text-warning"></i> Invalid GSTIN format';
-                validationSpan.className = "form-text text-warning";
-            } else if (gstin && validateGSTIN(gstin)) {
-                const stateCode = gstin.substring(0, 2);
-                validationSpan.innerHTML = '<i class="fas fa-check-circle text-success"></i> Valid GSTIN format';
-                validationSpan.className = "form-text text-success";
+
+            const gstStateMap = {
+                "01":"Jammu & Kashmir",
+                "02":"Himachal Pradesh",
+                "03":"Punjab",
+                "04":"Chandigarh",
+                "05":"Uttarakhand",
+                "06":"Haryana",
+                "07":"Delhi",
+                "08":"Rajasthan",
+                "09":"Uttar Pradesh",
+                "10":"Bihar",
+                "11":"Sikkim",
+                "12":"Arunachal Pradesh",
+                "13":"Nagaland",
+                "14":"Manipur",
+                "15":"Mizoram",
+                "16":"Tripura",
+                "17":"Meghalaya",
+                "18":"Assam",
+                "19":"West Bengal",
+                "20":"Jharkhand",
+                "21":"Odisha",
+                "22":"Chhattisgarh",
+                "23":"Madhya Pradesh",
+                "24":"Gujarat",
+                "27":"Maharashtra",
+                "29":"Karnataka",
+                "30":"Goa",
+                "32":"Kerala",
+                "33":"Tamil Nadu",
+                "34":"Puducherry",
+                "36":"Telangana",
+                "37":"Andhra Pradesh",
+                "38":"Ladakh"
+            };
+
+            if (gstin.length >= 2) {
+                let stateCode = gstin.substring(0, 2);
+                let stateName = gstStateMap[stateCode] || "";
+
+                document.getElementById("customer_state_code").value = stateCode;
+                document.getElementById("customer_state").value = stateName;
+
+                // Auto Place of Supply
+                document.getElementById("place_of_supply").value =
+                    stateName ? `${stateName} (${stateCode})` : stateCode;
+
+                calculateTotals();
+            }
+
+            if (gstin && validateGSTIN(gstin)) {
+                validationSpan.innerHTML =
+                    '<span class="text-success">GSTIN Valid - State Auto Filled</span>';
+            } else if (gstin.length > 0) {
+                validationSpan.innerHTML =
+                    '<span class="text-danger">Invalid GSTIN</span>';
             } else {
                 validationSpan.innerHTML = "";
             }
-        });
-
-        document.getElementById("hsn_code").addEventListener("input", function() {
-            document.querySelectorAll("#items .sac").forEach(input => {
-                if (!input.value.trim() || input.value === "998314") {
-                    input.value = this.value;
-                }
-            });
         });
 
         document.addEventListener("click", function(event) {

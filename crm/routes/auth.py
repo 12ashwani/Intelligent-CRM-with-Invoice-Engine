@@ -1,6 +1,14 @@
+import os
+import sys
+from pathlib import Path
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 from flask_login import login_user, logout_user, login_required, UserMixin, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
+ROOT_DIR = Path(__file__).resolve().parents[2]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
+
+from shared_sso import build_sso_query
 
 from database import (
     get_db_connection,
@@ -198,6 +206,32 @@ def logout():
     session.pop("last_panel", None)
     logout_user()
     return redirect(url_for("auth.login"))
+
+
+@auth_bp.route("/go/invoice")
+@login_required
+def go_invoice():
+    invoice_url = os.getenv("INVOICE_URL", "http://localhost:5001")
+    query = build_sso_query(
+        username=current_user.username,
+        role=current_user.role,
+        employee_id=str(current_user.employee_id or ""),
+        ttl_seconds=3600,
+    )
+    return redirect(f"{invoice_url}/?{query}")
+
+
+@auth_bp.route("/go/ai")
+@login_required
+def go_ai():
+    ai_url = os.getenv("AI_URL", "http://localhost:5002")
+    query = build_sso_query(
+        username=current_user.username,
+        role=current_user.role,
+        employee_id=str(current_user.employee_id or ""),
+        ttl_seconds=3600,
+    )
+    return redirect(f"{ai_url}/?{query}")
 
 
 # =============================

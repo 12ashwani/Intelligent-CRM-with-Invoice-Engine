@@ -272,36 +272,55 @@ def _normalize_items(items):
 
 
 def _build_tax_rows(invoice_data, items_data):
-    default_hsn = items_data[0]["hsn"] if items_data else "998314"
+    if not items_data:
+        return []
+
+    # Aggregate one row per GST rate.
+    taxable_by_rate = {}
+    for item in items_data:
+        rate = _to_decimal(item.get("tax_rate", 18))
+        taxable = _to_decimal(item.get("line_total", 0))
+        entry = taxable_by_rate.setdefault(
+            rate,
+            {"taxable_value": Decimal("0.00"), "hsn_values": set()},
+        )
+        entry["taxable_value"] += taxable
+        if item.get("hsn") and item["hsn"] != "-":
+            entry["hsn_values"].add(item["hsn"])
+
     rows = []
-    if invoice_data["cgst"] > 0:
+    for rate in sorted(taxable_by_rate.keys()):
+        taxable_value = taxable_by_rate[rate]["taxable_value"].quantize(Decimal("0.01"))
+        hsn_values = sorted(taxable_by_rate[rate]["hsn_values"])
+        hsn = ", ".join(hsn_values) if hsn_values else (items_data[0]["hsn"] if items_data else "998314")
+
+        if invoice_data["is_intra_state"]:
+            cgst_rate = (rate / Decimal("2")).quantize(Decimal("0.01"))
+            sgst_rate = (rate / Decimal("2")).quantize(Decimal("0.01"))
+            igst_rate = Decimal("0.00")
+            cgst_amount = (taxable_value * (cgst_rate / Decimal("100"))).quantize(Decimal("0.01"))
+            sgst_amount = (taxable_value * (sgst_rate / Decimal("100"))).quantize(Decimal("0.01"))
+            igst_amount = Decimal("0.00")
+        else:
+            cgst_rate = Decimal("0.00")
+            sgst_rate = Decimal("0.00")
+            igst_rate = rate.quantize(Decimal("0.01"))
+            cgst_amount = Decimal("0.00")
+            sgst_amount = Decimal("0.00")
+            igst_amount = (taxable_value * (igst_rate / Decimal("100"))).quantize(Decimal("0.01"))
+
         rows.append(
             {
-                "label": "CGST",
-                "hsn": default_hsn,
-                "rate": f"{invoice_data['cgst_rate_percent']}%",
-                "taxable_value": invoice_data["subtotal"],
-                "amount": invoice_data["cgst"],
-            }
-        )
-    if invoice_data["sgst"] > 0:
-        rows.append(
-            {
-                "label": "SGST",
-                "hsn": default_hsn,
-                "rate": f"{invoice_data['sgst_rate_percent']}%",
-                "taxable_value": invoice_data["subtotal"],
-                "amount": invoice_data["sgst"],
-            }
-        )
-    if invoice_data["igst"] > 0:
-        rows.append(
-            {
-                "label": "IGST",
-                "hsn": default_hsn,
-                "rate": f"{invoice_data['igst_rate_percent']}%",
-                "taxable_value": invoice_data["subtotal"],
-                "amount": invoice_data["igst"],
+                "hsn": hsn,
+                "rate": rate.quantize(Decimal("0.01")),
+                "taxable_value": taxable_value,
+                "cgst_rate": cgst_rate,
+                "sgst_rate": sgst_rate,
+                "igst_rate": igst_rate,
+                "cgst_amount": cgst_amount,
+                "sgst_amount": sgst_amount,
+                "igst_amount": igst_amount,
+                "amount": (cgst_amount + sgst_amount + igst_amount).quantize(Decimal("0.01")),
             }
         )
     return rows

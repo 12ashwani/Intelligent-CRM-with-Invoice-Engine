@@ -719,7 +719,7 @@ def create_tables():
     
     cur.close()
     conn.close()
-    print("✅ MySQL tables ready (including invoice schema)")
+    print("[CRM] MySQL tables ready (including invoice schema)")
 
 # =========================================================
 # EMPLOYEE MANAGEMENT
@@ -802,6 +802,7 @@ def assign_to_operations(lead_id: int, operation_executive_id: int):
     cur.execute("""
         INSERT INTO operations (lead_id, operation_executive)
         VALUES (%s, %s)
+        ON DUPLICATE KEY UPDATE operation_executive=VALUES(operation_executive)
     """, (lead_id, operation_executive_id))
     cur.execute("UPDATE leads SET status='Assigned to Operations' WHERE id=%s", (lead_id,))
     conn.commit()
@@ -1242,7 +1243,7 @@ def create_default_admin():
         if existing_password == "admin123":
             cur.execute("UPDATE users SET password=%s WHERE username='admin'", (hashed_password,))
             conn.commit()
-            print("✅ Admin password updated to hashed admin123")
+            print("[CRM] Admin password updated to hashed admin123")
         else:
             print("Admin already exists")
 
@@ -1264,7 +1265,7 @@ def create_default_admin():
     conn.commit()
     cur.close()
     conn.close()
-    print("✅ Admin created: admin / admin123")
+    print("[CRM] Admin created: admin / admin123")
 
 # =========================================================
 # CUSTOM QUERIES

@@ -1,4 +1,4 @@
-from MySQLdb.cursors import DictCursor
+from app.db_compat import DictCursor
 
 from app import mysql
 

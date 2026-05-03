@@ -1,7 +1,7 @@
 # ==============================
 # Virtual Environment
 # ==============================
-crmenv/
+smt/
 venv/
 env/
 .venv/

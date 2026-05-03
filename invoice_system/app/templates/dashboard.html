@@ -130,7 +130,7 @@
                         <div>
                             <p class="text-muted small mb-1">Average Invoice Value</p>
                             <h4 class="fw-bold mb-0">
-                                {% set revenue = data.stats.total_revenue|replace('₹', '')|replace(',', '')|float %}
+                                {% set revenue = data.stats.total_revenue|default(0)|float %}
                                 {% if revenue > 0 and total > 0 %}
                                     {{ "₹ %.0f"|format(revenue/total) }}
                                 {% else %}
@@ -241,7 +241,7 @@
                                 </tr>
                                 {% else %}
                                 <tr>
-                                    <td colspan="6" class="text-center text-muted py-4">No recent invoices found</td>
+                                    <td colspan="6" class="text-center text-muted py-4">No records</td>
                                 </tr>
                                 {% endfor %}
                             </tbody>

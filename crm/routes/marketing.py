@@ -16,6 +16,7 @@ from database import (
 )
 
 marketing_bp = Blueprint("marketing", __name__, url_prefix="/marketing")
+LEAD_STATUS_OPTIONS = ("Marketing", "Follow Up", "Rejected", "Converted")
 
 
 # ================================
@@ -64,7 +65,8 @@ def dashboard():
     return render_template(
         "marketing/dashboard.html",
         leads=leads,
-        ops_employees=ops_employees
+        ops_employees=ops_employees,
+        lead_status_options=LEAD_STATUS_OPTIONS,
     )
 
 
@@ -84,7 +86,8 @@ def marketing_leads():
     return render_template(
         "marketing/all_leads.html",
         leads=leads,
-        ops_employees=ops_employees
+        ops_employees=ops_employees,
+        lead_status_options=LEAD_STATUS_OPTIONS,
     )
 
 
@@ -113,7 +116,7 @@ def create():
 
     try:
         lead_status = (request.form.get("lead_status") or "Marketing").strip()
-        allowed_new_status = {"Marketing", "Follow Up", "Rejected", "Converted"}
+        allowed_new_status = set(LEAD_STATUS_OPTIONS)
         if lead_status not in allowed_new_status:
             lead_status = "Marketing"
 
@@ -349,13 +352,9 @@ def update_lead_status(lead_id):
 
     try:
         status = request.form.get("lead_status", "").strip()
+        operation_executive = request.form.get("operation_executive", type=int)
 
-        allowed_status = [
-            "Marketing",
-            "Converted",
-            "Follow Up",
-            "Rejected",
-        ]
+        allowed_status = set(LEAD_STATUS_OPTIONS)
 
         if status not in allowed_status:
             flash("Invalid lead status selected.", "danger")
@@ -378,16 +377,21 @@ def update_lead_status(lead_id):
             flash("Lead not found or not assigned to you.", "danger")
             return redirect(url_for("marketing.dashboard"))
 
-        cur.execute(
-            """
-            UPDATE leads
-            SET status=%s
-            WHERE id=%s
-            """,
-            (status, lead_id)
-        )
-
-        conn.commit()
+        if status == "Converted":
+            if not operation_executive:
+                flash("Please select an operations executive before converting.", "warning")
+                return redirect(url_for("marketing.dashboard"))
+            assign_to_operations(lead_id, operation_executive)
+        else:
+            cur.execute(
+                """
+                UPDATE leads
+                SET status=%s
+                WHERE id=%s
+                """,
+                (status, lead_id)
+            )
+            conn.commit()
 
         flash("Lead status updated successfully.", "success")
 

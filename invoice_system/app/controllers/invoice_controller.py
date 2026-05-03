@@ -1,11 +1,11 @@
 from flask import Blueprint, flash, redirect, render_template, request, send_file, url_for
-from MySQLdb.cursors import DictCursor
+from app.db_compat import DictCursor
 from datetime import date
 from flask import jsonify
 from app import mysql
 from app.repositories.customer_repo import CustomerRepo
 from app.services.invoice_service import InvoiceService
-from app.utils.gst import resolve_state_and_code, validate_address_pincode, validate_place_of_supply_format, extract_gstin_details
+from app.utils.gst import resolve_state_and_code, validate_address_pincode, validate_place_of_supply_format
 from app.utils.pdf_generator import build_invoice_context, generate_invoice_pdf, select_invoice_template
 
 invoice_bp = Blueprint("invoice", __name__)
@@ -48,6 +48,12 @@ def get_company_settings():
     cur, use_dict = get_cursor(DictCursor)
     cur.execute("SELECT * FROM company_settings LIMIT 1")
     return cur.fetchone() if use_dict else fetchone_dict(cur)
+
+
+def get_table_columns(table_name):
+    cur = mysql.connection.cursor()
+    cur.execute(f"SHOW COLUMNS FROM {table_name}")
+    return {row[0] for row in cur.fetchall()}
 
 # ================================
 # Invoice UI routes
@@ -101,9 +107,12 @@ def get_customer_api(customer_id):
 
 @invoice_bp.route("/api/lead/<int:lead_id>")
 def get_lead_api(lead_id):
+    customer_columns = get_table_columns("customers")
+    has_state_code = "state_code" in customer_columns
+    state_code_select = "c.state_code" if has_state_code else "'' AS state_code"
     cur = mysql.connection.cursor(DictCursor)
     cur.execute(
-        """
+        f"""
         SELECT
             l.id,
             l.company_name,
@@ -117,12 +126,15 @@ def get_lead_api(lead_id):
             c.gstin,
             c.address,
             c.state,
-            c.state_code,
+            {state_code_select},
             COALESCE(c.contact, c.phone, '') AS customer_contact
         FROM leads l
         LEFT JOIN customers c
             ON c.name = l.company_name
-            OR (c.email IS NOT NULL AND c.email <> '' AND (c.email = l.auth_person_email OR c.email = l.email))
+           AND (
+                (c.email IS NOT NULL AND c.email <> '' AND (c.email = l.auth_person_email OR c.email = l.email))
+                OR (c.email IS NULL OR c.email = '')
+           )
         WHERE l.id = %s
         ORDER BY c.id DESC
         LIMIT 1
@@ -192,6 +204,8 @@ def create_invoice_ui():
         qtys = request.form.getlist("qty[]")
         prices = request.form.getlist("price[]")
         sacs = request.form.getlist("sac[]")
+        discounts = request.form.getlist("discount[]")
+        tax_rates = request.form.getlist("tax_rate[]")
 
         items = []
         for i in range(len(names)):
@@ -199,6 +213,8 @@ def create_invoice_ui():
             qty_raw = (qtys[i] or "").strip()
             price_raw = (prices[i] or "").strip()
             sac_raw = (sacs[i] or "").strip() if i < len(sacs) else ""
+            discount_raw = (discounts[i] or "").strip() if i < len(discounts) else "0"
+            tax_rate_raw = (tax_rates[i] or "").strip() if i < len(tax_rates) else "18"
 
             if not item_name and not qty_raw and not price_raw and not sac_raw:
                 continue
@@ -216,8 +232,30 @@ def create_invoice_ui():
             try:
                 qty = int(qty_raw)
                 price = float(price_raw)
+                discount = float(discount_raw or 0)
+                tax_rate = float(tax_rate_raw or 0)
             except ValueError:
-                flash("Please enter valid numeric values for quantity and price.", "warning")
+                flash("Please enter valid numeric values for quantity, price, discount, and GST rate.", "warning")
+                return render_template(
+                    "invoices/create.html",
+                    customers=customers,
+                    crm_leads=crm_leads,
+                    selected_lead=selected_lead,
+                    company_state=company_state_name,
+                )
+
+            if discount < 0 or discount > 100:
+                flash("Discount must be between 0 and 100.", "warning")
+                return render_template(
+                    "invoices/create.html",
+                    customers=customers,
+                    crm_leads=crm_leads,
+                    selected_lead=selected_lead,
+                    company_state=company_state_name,
+                )
+
+            if tax_rate < 0 or tax_rate > 100:
+                flash("GST rate must be between 0 and 100.", "warning")
                 return render_template(
                     "invoices/create.html",
                     customers=customers,
@@ -231,6 +269,8 @@ def create_invoice_ui():
                 "qty": qty,
                 "price": price,
                 "hsn": sac_raw,
+                "discount": discount,
+                "tax_rate": tax_rate,
             })
 
         if not items:

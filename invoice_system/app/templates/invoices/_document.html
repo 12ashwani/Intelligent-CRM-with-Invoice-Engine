@@ -584,22 +584,29 @@
             <span>Subtotal</span>
             <span>₹ {{ "{:,.2f}".format(invoice.subtotal) }}</span>
           </div>
-          {% for tax in tax_rows %}
-          <div class="totals-row">
-            <span>CGST @ {{ tax.cgst_rate or tax.rate }}%</span>
-            <span>₹ {{ "{:,.2f}".format(tax.cgst_amount or (tax.amount/2 if tax.amount else 0)) }}</span>
-          </div>
-          <div class="totals-row">
-            <span>SGST @ {{ tax.sgst_rate or tax.rate }}%</span>
-            <span>₹ {{ "{:,.2f}".format(tax.sgst_amount or (tax.amount/2 if tax.amount else 0)) }}</span>
-          </div>
-          {% endfor %}
-          {% if not tax_rows and invoice.tax_total and invoice.tax_total > 0 %}
-          <div class="totals-row">
-            <span>GST Total</span>
-            <span>₹ {{ "{:,.2f}".format(invoice.tax_total) }}</span>
-          </div>
+
+                    {% if invoice.cgst and invoice.cgst > 0 %}
+            <div class="totals-row">
+              <span>CGST @ {{ invoice.cgst_rate_percent }}%</span>
+              <span>₹ {{ "{:,.2f}".format(invoice.cgst) }}</span>
+            </div>
+            <div class="totals-row">
+              <span>SGST @ {{ invoice.sgst_rate_percent }}%</span>
+              <span>₹ {{ "{:,.2f}".format(invoice.sgst) }}</span>
+            </div>
+          {% elif invoice.igst and invoice.igst > 0 %}
+            <div class="totals-row">
+              <span>IGST @ {{ invoice.igst_rate_percent }}%</span>
+              <span>₹ {{ "{:,.2f}".format(invoice.igst) }}</span>
+            </div>
+          {% elif invoice.tax_total and invoice.tax_total > 0 %}
+            {# Fallback when no tax_rows but tax_total exists #}
+            <div class="totals-row">
+              <span>GST Total</span>
+              <span>₹ {{ "{:,.2f}".format(invoice.tax_total) }}</span>
+            </div>
           {% endif %}
+
           <div class="totals-row grand-total">
             <span>Grand Total</span>
             <span>₹ {{ "{:,.2f}".format(invoice.total) }}</span>
@@ -614,16 +621,21 @@
       </div>
 
       <!-- TAX BREAKUP TABLE (HSN-Wise) -->
-      {% if tax_rows and tax_rows|length > 1 %}
+            {% if tax_rows %}
       <table class="tax-breakup">
         <thead>
           <tr>
             <th>HSN/SAC</th>
             <th>Taxable Value (₹)</th>
+            {% if invoice.is_intra_state %}
             <th>CGST (%)</th>
             <th>CGST Amt (₹)</th>
             <th>SGST (%)</th>
             <th>SGST Amt (₹)</th>
+            {% else %}
+            <th>IGST (%)</th>
+            <th>IGST Amt (₹)</th>
+            {% endif %}
             <th>Total Tax (₹)</th>
           </tr>
         </thead>
@@ -632,10 +644,15 @@
           <tr>
             <td class="text-center">{{ tax.hsn or '-' }}</td>
             <td class="text-right">{{ "{:,.2f}".format(tax.taxable_value) }}</td>
-            <td class="text-center">{{ tax.cgst_rate or (tax.rate|float/2) }}</td>
-            <td class="text-right">{{ "{:,.2f}".format(tax.cgst_amount or (tax.amount|float/2)) }}</td>
-            <td class="text-center">{{ tax.sgst_rate or (tax.rate|float/2) }}</td>
-            <td class="text-right">{{ "{:,.2f}".format(tax.sgst_amount or (tax.amount|float/2)) }}</td>
+            {% if invoice.is_intra_state %}
+            <td class="text-center">{{ tax.cgst_rate }}%</td>
+            <td class="text-right">{{ "{:,.2f}".format(tax.cgst_amount) }}</td>
+            <td class="text-center">{{ tax.sgst_rate }}%</td>
+            <td class="text-right">{{ "{:,.2f}".format(tax.sgst_amount) }}</td>
+            {% else %}
+            <td class="text-center">{{ tax.igst_rate }}%</td>
+            <td class="text-right">{{ "{:,.2f}".format(tax.igst_amount) }}</td>
+            {% endif %}
             <td class="text-right"><strong>{{ "{:,.2f}".format(tax.amount) }}</strong></td>
           </tr>
           {% endfor %}
@@ -712,3 +729,4 @@
   {% endif %}
 </body>
 </html>
+

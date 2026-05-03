@@ -1,59 +1,158 @@
+import os
+import signal
 import subprocess
 import sys
+import threading
+import time
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Dict, List, Optional
+from urllib.request import Request, urlopen
 
 
 BASE_DIR = Path(__file__).resolve().parent
-CRM_DIR = BASE_DIR / "crm"
-AI_DIR = BASE_DIR / "ai_agent"
-INVOICE_DIR = BASE_DIR / "invoice_system"
 
 
-def validate_paths() -> None:
-    missing = [str(folder) for folder in (CRM_DIR, AI_DIR, INVOICE_DIR) if not folder.exists()]
-    if missing:
-        raise FileNotFoundError(f"Missing required folders: {', '.join(missing)}")
+@dataclass
+class ServiceSpec:
+    name: str
+    cwd: Path
+    command: List[str]
+    port: int
+    health_url: str
+    env: Dict[str, str] = field(default_factory=dict)
+    process: Optional[subprocess.Popen] = None
+    restarts: int = 0
+    last_start: float = 0.0
+    stop_requested: bool = False
 
 
-def stop_process(process: subprocess.Popen | None) -> None:
-    if not process or process.poll() is not None:
+def _stream_output(name: str, pipe):
+    for line in iter(pipe.readline, ""):
+        print(f"[{name}] {line.rstrip()}")
+
+
+def _is_healthy(url: str, timeout: float = 2.0) -> bool:
+    try:
+        req = Request(url, method="GET")
+        with urlopen(req, timeout=timeout) as resp:
+            return 200 <= resp.status < 500
+    except Exception:
+        return False
+
+
+def _start_service(spec: ServiceSpec):
+    env = os.environ.copy()
+    env.update(spec.env)
+    env.setdefault("PYTHONIOENCODING", "utf-8")
+    env.setdefault("PYTHONUTF8", "1")
+    spec.last_start = time.time()
+    spec.process = subprocess.Popen(
+        spec.command,
+        cwd=str(spec.cwd),
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
+    )
+    t = threading.Thread(target=_stream_output, args=(spec.name, spec.process.stdout), daemon=True)
+    t.start()
+    print(f"[supervisor] started {spec.name} pid={spec.process.pid} port={spec.port}")
+
+
+def _stop_service(spec: ServiceSpec):
+    if not spec.process or spec.process.poll() is not None:
         return
-    process.terminate()
+    spec.stop_requested = True
+    spec.process.terminate()
     try:
-        process.wait(timeout=5)
+        spec.process.wait(timeout=8)
     except subprocess.TimeoutExpired:
-        process.kill()
+        spec.process.kill()
 
 
-def run_all() -> None:
-    print("Starting CRM, Invoice System, and AI Agent...")
-    validate_paths()
+def build_services() -> List[ServiceSpec]:
+    python = sys.executable
+    return [
+        ServiceSpec(
+            name="crm",
+            cwd=BASE_DIR / "crm",
+            command=[python, "app.py"],
+            port=5000,
+            health_url="http://127.0.0.1:5000/test-app",
+            env={"APP_PORT": "5000", "FLASK_DEBUG": "false"},
+        ),
+        ServiceSpec(
+            name="invoice",
+            cwd=BASE_DIR / "invoice_system",
+            command=[python, "run.py"],
+            port=5001,
+            health_url="http://127.0.0.1:5001/",
+            env={"APP_PORT": "5001"},
+        ),
+        ServiceSpec(
+            name="ai_agent",
+            cwd=BASE_DIR,
+            command=[python, "-m", "ai_agent.server"],
+            port=5002,
+            health_url="http://127.0.0.1:5002/health",
+            env={"AI_PORT": "5002"},
+        ),
+    ]
 
-    crm_process = None
-    invoice_process = None
+
+def validate_layout(services: List[ServiceSpec]):
+    missing = [str(spec.cwd) for spec in services if not spec.cwd.exists()]
+    if missing:
+        raise FileNotFoundError(f"Missing service directories: {', '.join(missing)}")
+
+
+def main():
+    services = build_services()
+    validate_layout(services)
+    running = True
+
+    def shutdown_handler(_sig, _frm):
+        nonlocal running
+        running = False
+        print("[supervisor] shutdown signal received")
+
+    signal.signal(signal.SIGINT, shutdown_handler)
+    signal.signal(signal.SIGTERM, shutdown_handler)
+
+    for spec in services:
+        _start_service(spec)
 
     try:
-        crm_process = subprocess.Popen([sys.executable, "app.py"], cwd=str(CRM_DIR))
-        print("CRM started in background on http://localhost:5000")
+        while running:
+            for spec in services:
+                proc = spec.process
+                if not proc:
+                    continue
+                if proc.poll() is not None and not spec.stop_requested:
+                    spec.restarts += 1
+                    backoff = min(2 * spec.restarts, 20)
+                    print(f"[supervisor] {spec.name} exited code={proc.returncode}; restarting in {backoff}s")
+                    time.sleep(backoff)
+                    spec.stop_requested = False
+                    _start_service(spec)
+                    continue
 
-        invoice_process = subprocess.Popen([sys.executable, "run.py"], cwd=str(INVOICE_DIR))
-        print("Invoice System started in background on http://localhost:5001")
-
-        print("Starting AI Agent...")
-        subprocess.run([sys.executable, "-m", "ai_agent.main"], cwd=str(BASE_DIR))
-
-    except KeyboardInterrupt:
-        print("\nShutting down...")
+                if not _is_healthy(spec.health_url):
+                    # do not restart too quickly after fresh start
+                    if time.time() - spec.last_start > 10:
+                        print(f"[supervisor] unhealthy: {spec.name}; restarting")
+                        _stop_service(spec)
+                        spec.stop_requested = False
+                        spec.restarts += 1
+                        _start_service(spec)
+            time.sleep(3)
     finally:
-        stop_process(crm_process)
-        stop_process(invoice_process)
-        print("CRM and Invoice System servers stopped.")
+        for spec in services:
+            _stop_service(spec)
+        print("[supervisor] all services stopped")
 
 
 if __name__ == "__main__":
-    try:
-        run_all()
-    except KeyboardInterrupt:
-        print("\nApplication terminated by user.")
-    except Exception as error:
-        print(f"\nAn error occurred: {error}")
+    main()

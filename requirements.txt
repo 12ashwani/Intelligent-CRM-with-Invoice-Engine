@@ -1,7 +1,7 @@
 mysql-connector-python
 openai-whisper
 pyttsx3
-ollama
+
 sounddevice
 scipy
 flask==3.0.*
